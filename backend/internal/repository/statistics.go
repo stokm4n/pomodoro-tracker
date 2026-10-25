@@ -155,6 +155,8 @@ func (r *StatisticsRepository) GetLeaderboard(
 			SELECT u.id AS user_id,
 			       u.username,
 			       u.avatar_data,
+			       u.bio,
+			       u.created_at,
 			       COUNT(s.id) AS completed_pomodoros,
 			       COALESCE(SUM(s.elapsed_seconds), 0) AS focus_seconds
 			FROM users AS u
@@ -168,7 +170,7 @@ func (r *StatisticsRepository) GetLeaderboard(
 				(CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Moscow')::DATE - ($1::INTEGER - 1)
 			 )
 			WHERE u.leaderboard_visible = TRUE
-			GROUP BY u.id, u.username, u.avatar_data
+			GROUP BY u.id, u.username, u.avatar_data, u.bio, u.created_at
 		), ranked AS (
 			SELECT ROW_NUMBER() OVER (
 			           ORDER BY completed_pomodoros DESC, focus_seconds DESC, username
@@ -176,6 +178,8 @@ func (r *StatisticsRepository) GetLeaderboard(
 			       user_id,
 			       username,
 			       avatar_data,
+			       bio,
+			       created_at,
 			       completed_pomodoros,
 			       focus_seconds
 			FROM user_totals
@@ -184,6 +188,8 @@ func (r *StatisticsRepository) GetLeaderboard(
 		       user_id,
 		       username,
 		       avatar_data,
+		       bio,
+		       created_at,
 		       completed_pomodoros,
 		       focus_seconds,
 		       user_id = $2

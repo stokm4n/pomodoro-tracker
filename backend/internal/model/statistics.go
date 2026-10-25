@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type DailyStatistics struct {
 	Date               string `json:"date"`
 	CompletedPomodoros int64  `json:"completed_pomodoros"`
@@ -25,13 +27,15 @@ type Statistics struct {
 }
 
 type LeaderboardEntry struct {
-	Rank               int64  `json:"rank"`
-	UserID             int64  `json:"user_id"`
-	Username           string `json:"username"`
-	AvatarData         string `json:"avatar_data"`
-	CompletedPomodoros int64  `json:"completed_pomodoros"`
-	FocusSeconds       int64  `json:"focus_seconds"`
-	IsCurrentUser      bool   `json:"is_current_user"`
+	Rank               int64     `json:"rank"`
+	UserID             int64     `json:"user_id"`
+	Username           string    `json:"username"`
+	AvatarData         string    `json:"avatar_data"`
+	Bio                string    `json:"bio"`
+	CreatedAt          time.Time `json:"created_at"`
+	CompletedPomodoros int64     `json:"completed_pomodoros"`
+	FocusSeconds       int64     `json:"focus_seconds"`
+	IsCurrentUser      bool      `json:"is_current_user"`
 }
 
 type Leaderboard struct {

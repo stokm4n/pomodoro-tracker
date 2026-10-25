@@ -15,6 +15,7 @@ export function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [openedProfileId, setOpenedProfileId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -74,28 +75,60 @@ export function Leaderboard() {
           {leaderboard.entries.map((entry) => (
             <li
               key={entry.user_id}
-              className={entry.is_current_user ? "is-current" : ""}
+              className={`${entry.is_current_user ? "is-current" : ""} ${openedProfileId === entry.user_id ? "is-open" : ""}`}
             >
-              <span className="leaderboard-rank">{formatRank(entry.rank)}</span>
-              <span className="leaderboard-avatar" aria-hidden="true">
-                {entry.avatar_data ? (
-                  <img src={entry.avatar_data} alt="" />
-                ) : (
-                  entry.username.charAt(0).toUpperCase()
-                )}
-              </span>
-              <div className="leaderboard-user">
-                <strong>{entry.username}</strong>
-                {entry.is_current_user && <span>Это вы</span>}
+              <div className="leaderboard-entry-summary">
+                <span className="leaderboard-rank">{formatRank(entry.rank)}</span>
+                <span className="leaderboard-avatar" aria-hidden="true">
+                  {entry.avatar_data ? (
+                    <img src={entry.avatar_data} alt="" />
+                  ) : (
+                    entry.username.charAt(0).toUpperCase()
+                  )}
+                </span>
+                <div className="leaderboard-user">
+                  <strong>{entry.username}</strong>
+                  {entry.is_current_user && <span>Это вы</span>}
+                </div>
+                <div className="leaderboard-result">
+                  <strong>{entry.completed_pomodoros}</strong>
+                  <span>Pomodoro</span>
+                </div>
+                <div className="leaderboard-result">
+                  <strong>{formatFocusTime(entry.focus_seconds)}</strong>
+                  <span>Фокус</span>
+                </div>
+                <button
+                  className="leaderboard-profile-button"
+                  type="button"
+                  aria-expanded={openedProfileId === entry.user_id}
+                  onClick={() => setOpenedProfileId((current) => (
+                    current === entry.user_id ? null : entry.user_id
+                  ))}
+                >
+                  {openedProfileId === entry.user_id ? "Скрыть" : "Профиль"}
+                </button>
               </div>
-              <div className="leaderboard-result">
-                <strong>{entry.completed_pomodoros}</strong>
-                <span>Pomodoro</span>
-              </div>
-              <div className="leaderboard-result">
-                <strong>{formatFocusTime(entry.focus_seconds)}</strong>
-                <span>Фокус</span>
-              </div>
+
+              {openedProfileId === entry.user_id && (
+                <div className="leaderboard-profile">
+                  <span className="leaderboard-profile-avatar" aria-hidden="true">
+                    {entry.avatar_data ? (
+                      <img src={entry.avatar_data} alt="" />
+                    ) : (
+                      entry.username.charAt(0).toUpperCase()
+                    )}
+                  </span>
+                  <div className="leaderboard-profile-copy">
+                    <span className="eyebrow">Профиль участника</span>
+                    <h3>{entry.username}</h3>
+                    <p>{entry.bio || "Пользователь пока ничего о себе не рассказал."}</p>
+                    <span className="leaderboard-profile-date">
+                      В проекте с {formatProfileDate(entry.created_at)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ol>
@@ -117,4 +150,12 @@ function formatFocusTime(totalSeconds: number) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return hours > 0 ? `${hours} ч ${minutes} мин` : `${minutes} мин`;
+}
+
+function formatProfileDate(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
 }

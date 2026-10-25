@@ -129,6 +129,8 @@ export interface LeaderboardEntry {
   user_id: number;
   username: string;
   avatar_data: string;
+  bio: string;
+  created_at: string;
   completed_pomodoros: number;
   focus_seconds: number;
   is_current_user: boolean;
