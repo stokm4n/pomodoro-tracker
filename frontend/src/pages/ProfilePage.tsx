@@ -5,6 +5,7 @@ import {
   type FormEvent,
 } from "react";
 import { ApiError } from "../api/client";
+import { Achievements } from "../components/Achievements";
 import { AppHeader } from "../components/AppHeader";
 import { useAuth } from "../context/AuthContext";
 import type { AppView } from "../types";
@@ -13,7 +14,7 @@ interface ProfilePageProps {
   onNavigate: (view: AppView) => void;
 }
 
-type ProfileSection = "profile" | "privacy";
+type ProfileSection = "profile" | "achievements" | "privacy";
 
 export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const {
@@ -228,6 +229,17 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 <small>Фото, описание и рейтинг</small>
               </button>
               <button
+                className={activeSection === "achievements" ? "active" : ""}
+                type="button"
+                onClick={() => {
+                  setActiveSection("achievements");
+                  setError("");
+                }}
+              >
+                <span>Достижения</span>
+                <small>Награды и прогресс</small>
+              </button>
+              <button
                 className={activeSection === "privacy" ? "active" : ""}
                 type="button"
                 onClick={() => {
@@ -307,8 +319,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
                 <div>
                   <strong>Показывать меня в leaderboard</strong>
                   <span>
-                    Другие пользователи увидят только логин, аватар, число Pomodoro
-                    и общее время фокуса.
+                    Другие пользователи увидят логин, аватар, описание, число
+                    Pomodoro и общее время фокуса.
                   </span>
                 </div>
                 <input
@@ -321,6 +333,8 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
             </section>
 
                 </>
+              ) : activeSection === "achievements" ? (
+                <Achievements />
               ) : (
                 <>
             <form className="profile-card" onSubmit={saveUsername}>
