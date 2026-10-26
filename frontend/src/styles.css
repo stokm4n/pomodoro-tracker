@@ -1347,17 +1347,6 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   margin-bottom: 38px;
 }
 
-.timer-transition {
-  margin: 0 0 22px;
-  border-left: 3px solid var(--green);
-  border-radius: 0 10px 10px 0;
-  padding: 12px 15px;
-  color: var(--green);
-  background: var(--green-soft);
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .timer-card {
   display: grid;
   justify-items: center;
@@ -1461,6 +1450,95 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 
 .timer-main-button {
   min-width: 150px;
+}
+
+.deep-focus-overlay {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: auto;
+  padding: 32px;
+  color: #fdf9f2;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(217, 79, 61, 0.2), transparent 34%),
+    linear-gradient(145deg, #191714, #29231f);
+}
+
+.deep-focus-content {
+  display: grid;
+  justify-items: center;
+  width: min(720px, 100%);
+  text-align: center;
+}
+
+.deep-focus-eyebrow {
+  color: #e98a78;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.deep-focus-task {
+  max-width: 620px;
+  margin: 22px 0 0;
+  color: #d8d0c7;
+  font-size: clamp(15px, 2vw, 20px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.deep-focus-time {
+  margin: clamp(46px, 8vh, 86px) 0 18px;
+  font-family: "Unbounded", sans-serif;
+  font-size: clamp(72px, 16vw, 170px);
+  letter-spacing: -0.09em;
+  line-height: 0.88;
+}
+
+.deep-focus-status {
+  color: #a89f96;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.deep-focus-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: clamp(44px, 7vh, 72px);
+}
+
+.deep-focus-controls .button {
+  min-width: 132px;
+}
+
+.deep-focus-controls .button-quiet {
+  border-color: #4d4640;
+  color: #fdf9f2;
+  background: #332e2a;
+}
+
+.deep-focus-controls .text-button {
+  padding-inline: 14px;
+  color: #c6bdb4;
+}
+
+.deep-focus-reminder {
+  position: absolute;
+  right: 32px;
+  bottom: 24px;
+  left: 32px;
+  margin: 0;
+  color: #837b74;
+  font-size: 10px;
+  text-align: center;
 }
 
 .timer-loading {
@@ -2598,8 +2676,15 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 }
 
 .timer-panel-heading {
+  display: grid;
   width: 100%;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.timer-panel-heading .eyebrow {
+  margin-bottom: 0;
+  line-height: 1;
 }
 
 .timer-panel-heading h2 {
@@ -2607,6 +2692,13 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   font-family: "Unbounded", sans-serif;
   font-size: 26px;
   letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.deep-focus-trigger {
+  margin-top: 12px;
+  color: var(--tomato-dark);
+  font-size: 11px;
 }
 
 .timer-card-embedded .timer-clock {
@@ -2618,7 +2710,6 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   font-size: clamp(44px, 6vw, 62px);
 }
 
-.timer-card-embedded .timer-transition,
 .timer-error {
   width: 100%;
   margin-top: 20px;
@@ -3387,6 +3478,23 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   .timer-controls {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .deep-focus-overlay {
+    padding: 24px 18px 72px;
+  }
+
+  .deep-focus-time {
+    font-size: clamp(64px, 23vw, 112px);
+  }
+
+  .deep-focus-controls {
+    width: 100%;
+  }
+
+  .deep-focus-controls .button,
+  .deep-focus-controls .text-button {
+    flex: 1 1 130px;
   }
 }
 

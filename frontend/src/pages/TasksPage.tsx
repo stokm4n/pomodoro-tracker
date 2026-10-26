@@ -141,6 +141,7 @@ export function TasksPage({ onNavigate, selectedTaskId, onSelectTask }: TasksPag
           <aside className="focus-timer-column">
             <TimerPanel
               selectedTaskId={selectedTask?.id ?? null}
+              selectedTaskTitle={selectedTask?.title ?? null}
               onSelectTask={onSelectTask}
             />
 

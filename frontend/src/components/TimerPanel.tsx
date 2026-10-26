@@ -15,6 +15,7 @@ import {
 
 interface TimerPanelProps {
   selectedTaskId: number | null;
+  selectedTaskTitle: string | null;
   onSelectTask: (taskId: number | null) => void;
 }
 
@@ -26,6 +27,7 @@ const sessionLabels: Record<SessionType, string> = {
 
 export function TimerPanel({
   selectedTaskId,
+  selectedTaskTitle,
   onSelectTask,
 }: TimerPanelProps) {
   const { token, logout } = useAuth();
@@ -36,8 +38,9 @@ export function TimerPanel({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [transitionMessage, setTransitionMessage] = useState("");
+  const [deepFocusActive, setDeepFocusActive] = useState(false);
   const autoCompleting = useRef(false);
+  const wakeLock = useRef<WakeLockSentinel | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -141,6 +144,38 @@ export function TimerPanel({
     };
   }, [session?.id, session?.status, session?.remaining_seconds, token]);
 
+  useEffect(() => {
+    if (!session) return;
+    const warnAboutActiveSession = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnAboutActiveSession);
+    return () => window.removeEventListener("beforeunload", warnAboutActiveSession);
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (!deepFocusActive) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const restoreWakeLock = () => {
+      if (document.visibilityState === "visible") void requestScreenWakeLock();
+    };
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) setDeepFocusActive(false);
+    };
+
+    document.addEventListener("visibilitychange", restoreWakeLock);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("visibilitychange", restoreWakeLock);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      void releaseScreenWakeLock();
+    };
+  }, [deepFocusActive]);
+
   function handleError(requestError: unknown) {
     if (requestError instanceof ApiError && requestError.status === 401) {
       logout();
@@ -195,27 +230,19 @@ export function TimerPanel({
     try {
       new Notification(title, { body, tag: "pomodoro-timer-completed" });
     } catch {
-      // Встроенное сообщение о переходе всё равно останется на странице.
+      // Таймер всё равно переключится на следующий интервал.
     }
   }
 
   function prepareNextInterval(nextType: SessionType) {
     setSession(null);
     setSessionType(nextType);
-    setTransitionMessage(
-      nextType === "long_break"
-        ? "Четыре Pomodoro завершены — время длинного перерыва."
-        : nextType === "short_break"
-          ? "Pomodoro завершён — время короткого перерыва."
-          : "Перерыв завершён — можно вернуться к работе.",
-    );
   }
 
   async function start() {
     if (!token) return;
     setBusy(true);
     setError("");
-    setTransitionMessage("");
     try {
       prepareCompletionSound();
       if (
@@ -277,13 +304,45 @@ export function TimerPanel({
     setError("");
     try {
       await sessionsApi.cancelSession(token, session.id);
+      leaveDeepFocus();
       setSession(null);
-      setTransitionMessage("");
     } catch (requestError) {
       handleError(requestError);
     } finally {
       setBusy(false);
     }
+  }
+
+  function enterDeepFocus() {
+    setDeepFocusActive(true);
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      void document.documentElement.requestFullscreen().catch(() => undefined);
+    }
+    void requestScreenWakeLock();
+  }
+
+  function leaveDeepFocus() {
+    setDeepFocusActive(false);
+    void releaseScreenWakeLock();
+    if (document.fullscreenElement && document.exitFullscreen) {
+      void document.exitFullscreen().catch(() => undefined);
+    }
+  }
+
+  async function requestScreenWakeLock() {
+    if (wakeLock.current) return;
+    try {
+      wakeLock.current = await navigator.wakeLock.request("screen");
+    } catch {
+      // Режим продолжит работать, даже если браузер не поддерживает Wake Lock.
+    }
+  }
+
+  async function releaseScreenWakeLock() {
+    const activeWakeLock = wakeLock.current;
+    wakeLock.current = null;
+    if (!activeWakeLock) return;
+    await activeWakeLock.release().catch(() => undefined);
   }
 
   const minutes = Math.floor(remainingSeconds / 60);
@@ -314,10 +373,6 @@ export function TimerPanel({
       </div>
 
       {error && <p className="page-error timer-error" role="alert">{error}</p>}
-      {transitionMessage && (
-        <p className="timer-transition" role="status">{transitionMessage}</p>
-      )}
-
           {loading ? (
             <div className="empty-state timer-loading">Загружаем таймер…</div>
           ) : (
@@ -329,10 +384,7 @@ export function TimerPanel({
                     className={sessionType === type ? "active" : ""}
                     type="button"
                     disabled={Boolean(session)}
-                    onClick={() => {
-                      setSessionType(type);
-                      setTransitionMessage("");
-                    }}
+                    onClick={() => setSessionType(type)}
                   >
                     {sessionLabels[type]}
                   </button>
@@ -371,8 +423,59 @@ export function TimerPanel({
                 )}
               </div>
 
+              <button
+                className="text-button deep-focus-trigger"
+                type="button"
+                onClick={enterDeepFocus}
+              >
+                Глубокий фокус
+              </button>
+
             </>
           )}
+
+      {deepFocusActive && (
+        <div className="deep-focus-overlay" role="dialog" aria-modal="true" aria-label="Глубокий фокус">
+          <div className="deep-focus-content">
+            <span className="deep-focus-eyebrow">Глубокий фокус</span>
+            <p className="deep-focus-task">
+              {(session?.session_type ?? sessionType) === "work"
+                ? selectedTaskTitle ?? "Сессия без задачи"
+                : sessionLabels[session?.session_type ?? sessionType]}
+            </p>
+            <strong className="deep-focus-time" aria-live="polite">{timerText}</strong>
+            <span className="deep-focus-status">
+              {session?.status === "paused"
+                ? "На паузе"
+                : session
+                  ? sessionLabels[session.session_type]
+                  : "Готов к запуску"}
+            </span>
+            <div className="deep-focus-controls">
+              {!session ? (
+                <button className="button button-primary" disabled={busy} onClick={start}>
+                  {busy ? "Запускаем…" : "Начать"}
+                </button>
+              ) : (
+                <>
+                  <button className="button button-primary" disabled={busy} onClick={pauseOrResume}>
+                    {session.status === "running" ? "Пауза" : "Продолжить"}
+                  </button>
+                  <button className="button button-quiet" disabled={busy} onClick={finish}>
+                    Завершить
+                  </button>
+                </>
+              )}
+              <button className="text-button" type="button" onClick={leaveDeepFocus}>
+                Выйти из режима
+              </button>
+            </div>
+          </div>
+          <p className="deep-focus-reminder">
+            Не забудьте включить «Не беспокоить» на этом и ближайших устройствах.
+          </p>
+        </div>
+      )}
     </section>
   );
 }
