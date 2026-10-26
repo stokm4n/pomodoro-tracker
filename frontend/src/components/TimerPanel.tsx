@@ -3,6 +3,7 @@ import * as sessionsApi from "../api/sessions";
 import * as settingsApi from "../api/settings";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useLofiPlayer } from "../context/LofiPlayerContext";
 import type {
   PomodoroSession,
   SessionType,
@@ -31,6 +32,7 @@ export function TimerPanel({
   onSelectTask,
 }: TimerPanelProps) {
   const { token, logout } = useAuth();
+  const { isOpen: lofiOpen, toggle: toggleLofi } = useLofiPlayer();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [sessionType, setSessionType] = useState<SessionType>("work");
   const [session, setSession] = useState<PomodoroSession | null>(null);
@@ -423,13 +425,24 @@ export function TimerPanel({
                 )}
               </div>
 
-              <button
-                className="text-button deep-focus-trigger"
-                type="button"
-                onClick={enterDeepFocus}
-              >
-                Глубокий фокус
-              </button>
+              <div className="focus-tools">
+                <button
+                  className="text-button deep-focus-trigger"
+                  type="button"
+                  onClick={enterDeepFocus}
+                >
+                  Глубокий фокус
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  className="text-button lofi-trigger"
+                  type="button"
+                  aria-expanded={lofiOpen}
+                  onClick={toggleLofi}
+                >
+                  Lo-fi музыка
+                </button>
+              </div>
 
             </>
           )}

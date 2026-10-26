@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { TomatoMark } from "./components/TomatoMark";
 import { useAuth } from "./context/AuthContext";
+import { LofiPlayerProvider } from "./context/LofiPlayerContext";
 import { AuthPage } from "./pages/AuthPage";
 import { AdminPage } from "./pages/AdminPage";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -52,20 +53,23 @@ export default function App() {
 
   if (!user) return <AuthPage />;
 
-  if (view === "history") return <HistoryPage onNavigate={setView} />;
-  if (view === "settings") return <SettingsPage onNavigate={setView} />;
-  if (view === "admin" && user.role === "admin") {
-    return <AdminPage onNavigate={setView} />;
+  let page;
+  if (view === "history") page = <HistoryPage onNavigate={setView} />;
+  else if (view === "settings") page = <SettingsPage onNavigate={setView} />;
+  else if (view === "admin" && user.role === "admin") {
+    page = <AdminPage onNavigate={setView} />;
+  } else if (view === "profile") page = <ProfilePage onNavigate={setView} />;
+  else {
+    page = (
+      <TasksPage
+        selectedTaskId={selectedTaskId}
+        onSelectTask={selectTask}
+        onNavigate={setView}
+      />
+    );
   }
-  if (view === "profile") return <ProfilePage onNavigate={setView} />;
 
-  return (
-    <TasksPage
-      selectedTaskId={selectedTaskId}
-      onSelectTask={selectTask}
-      onNavigate={setView}
-    />
-  );
+  return <LofiPlayerProvider>{page}</LofiPlayerProvider>;
 }
 
 function selectedTaskStorageKey(userId: number) {
