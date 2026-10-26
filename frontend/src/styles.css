@@ -651,9 +651,12 @@ select:focus-visible {
   font-size: 10px;
 }
 
-.leaderboard-user .leaderboard-achievement-count {
-  color: var(--tomato);
-  font-weight: 700;
+.leaderboard-level-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--green) !important;
+  font-weight: 800;
 }
 
 .leaderboard-result {
@@ -1874,6 +1877,117 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   font-size: 13px;
 }
 
+.user-level-overview {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 24px;
+  border: 1px solid rgba(217, 79, 61, 0.3);
+  border-radius: 18px;
+  padding: 22px;
+  background: linear-gradient(135deg, var(--tomato-soft), var(--paper) 70%);
+}
+
+.user-level-copy h3 {
+  margin: 5px 0 7px;
+  font-family: "Unbounded", sans-serif;
+  font-size: clamp(20px, 3vw, 28px);
+}
+
+.user-level-copy p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.user-level-copy > strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.user-level-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--sand);
+}
+
+.user-level-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--tomato), #f19b62);
+}
+
+.level-avatar {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 32%;
+  background: linear-gradient(145deg, #76563f, #c59a65);
+  box-shadow: 0 7px 18px rgba(72, 48, 32, 0.16);
+}
+
+.level-avatar::after {
+  position: absolute;
+  right: 8%;
+  bottom: 7%;
+  width: 24%;
+  height: 24%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.36);
+  content: "";
+}
+
+.level-avatar-small {
+  width: 22px;
+  height: 22px;
+  border-width: 1px;
+  border-radius: 7px;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.level-avatar-medium {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  font-size: 29px;
+}
+
+.level-avatar-large {
+  width: 108px;
+  height: 108px;
+  border-radius: 30px;
+  font-size: 51px;
+}
+
+.level-avatar-symbol {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+.level-avatar-seed { background: linear-gradient(145deg, #72513d, #b8845e); }
+.level-avatar-seed .level-avatar-symbol { color: #f4d2a1; font-size: 1.7em; }
+.level-avatar-germ { background: linear-gradient(145deg, #d8e8ad, #7ea65b); }
+.level-avatar-sprout { background: linear-gradient(145deg, #a8d17a, #3f7d4c); }
+.level-avatar-seedling { background: linear-gradient(145deg, #8ecb83, #376942); }
+.level-avatar-strong-bush { background: linear-gradient(145deg, #67a961, #285e3d); }
+.level-avatar-flowering { background: linear-gradient(145deg, #f6dc75, #75a650); }
+.level-avatar-first-fruit { background: linear-gradient(145deg, #f7b16e, #d9513f); }
+.level-avatar-green-tomato { background: linear-gradient(145deg, #cce779, #4e963e); }
+.level-avatar-green-tomato .level-avatar-symbol { color: #2f7b39; font-size: 1.35em; }
+.level-avatar-ripe-tomato { background: linear-gradient(145deg, #f58a68, #b92e2e); }
+.level-avatar-golden-tomato { background: linear-gradient(145deg, #ffe488, #d99b25); }
+.level-avatar-great-harvest { background: linear-gradient(145deg, #ef9d52, #8e492f); }
+
 .profile-summary-card h2 {
   overflow-wrap: anywhere;
   font-size: clamp(24px, 3vw, 34px);
@@ -2827,6 +2941,10 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   background: linear-gradient(145deg, rgba(217, 79, 61, 0.17), #2d2a27 72%);
 }
 
+:root[data-theme="dark"] .user-level-overview {
+  background: linear-gradient(135deg, rgba(217, 79, 61, 0.17), #2d2a27 70%);
+}
+
 :root[data-theme="dark"] .timer-clock {
   background: radial-gradient(circle, #2d2a27 0 58%, #242220 100%);
 }
@@ -3070,6 +3188,19 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 
   .achievements-grid {
     grid-template-columns: 1fr;
+  }
+
+  .user-level-overview {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .level-avatar-large {
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    font-size: 32px;
   }
 
   .admin-users-card {

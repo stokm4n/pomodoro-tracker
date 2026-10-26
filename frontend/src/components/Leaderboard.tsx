@@ -4,6 +4,8 @@ import { getLeaderboard } from "../api/statistics";
 import { useAuth } from "../context/AuthContext";
 import type { Leaderboard as LeaderboardData, LeaderboardPeriod } from "../types";
 import { buildAchievements, isAchievementUnlocked } from "../utils/achievements";
+import { getUserLevelProgress } from "../utils/userLevels";
+import { UserLevelAvatar } from "./UserLevelAvatar";
 
 const periodLabels: Record<LeaderboardPeriod, string> = {
   week: "7 дней",
@@ -81,6 +83,7 @@ export function Leaderboard() {
               longestStreak: entry.longest_streak,
             });
             const unlockedAchievements = achievements.filter(isAchievementUnlocked);
+            const levelProgress = getUserLevelProgress(entry.total_completed_pomodoros);
 
             return (
             <li
@@ -99,8 +102,9 @@ export function Leaderboard() {
                 <div className="leaderboard-user">
                   <strong>{entry.username}</strong>
                   {entry.is_current_user && <span>Это вы</span>}
-                  <span className="leaderboard-achievement-count">
-                    🏆 {unlockedAchievements.length}/{achievements.length} достижений
+                  <span className="leaderboard-level-label">
+                    <UserLevelAvatar level={levelProgress.level} size="small" />
+                    {levelProgress.level.name}
                   </span>
                 </div>
                 <div className="leaderboard-result">

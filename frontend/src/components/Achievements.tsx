@@ -8,6 +8,8 @@ import {
   isAchievementUnlocked,
   metricsFromStatistics,
 } from "../utils/achievements";
+import { getUserLevelProgress } from "../utils/userLevels";
+import { UserLevelAvatar } from "./UserLevelAvatar";
 
 export function Achievements() {
   const { token, logout } = useAuth();
@@ -33,6 +35,9 @@ export function Achievements() {
     [statistics],
   );
   const unlockedCount = achievements.filter(isAchievementUnlocked).length;
+  const levelProgress = statistics
+    ? getUserLevelProgress(statistics.completed_pomodoros)
+    : null;
 
   return (
     <section className="profile-card achievements-card">
@@ -55,6 +60,32 @@ export function Achievements() {
       {!statistics && !error ? (
         <div className="achievements-loading">Загружаем достижения…</div>
       ) : (
+        <>
+        {levelProgress && (
+          <section className="user-level-overview" aria-label="Уровень пользователя">
+            <UserLevelAvatar level={levelProgress.level} size="large" />
+            <div className="user-level-copy">
+              <span className="eyebrow">Уровень пользователя</span>
+              <h3>{levelProgress.level.name}</h3>
+              {levelProgress.nextLevel ? (
+                <p>
+                  Ещё {levelProgress.nextLevel.minimumPomodoros - levelProgress.completedPomodoros}
+                  {" Pomodoro до уровня «"}{levelProgress.nextLevel.name}»
+                </p>
+              ) : (
+                <p>Получен максимальный уровень.</p>
+              )}
+              <div className="user-level-progress" aria-hidden="true">
+                <span style={{ width: `${levelProgress.progressPercent}%` }} />
+              </div>
+              <strong>
+                {levelProgress.nextLevel
+                  ? `${levelProgress.completedPomodoros} из ${levelProgress.nextLevel.minimumPomodoros} Pomodoro`
+                  : `${levelProgress.completedPomodoros} Pomodoro`}
+              </strong>
+            </div>
+          </section>
+        )}
         <div className="achievements-grid">
           {achievements.map((achievement) => {
             const unlocked = isAchievementUnlocked(achievement);
@@ -84,6 +115,7 @@ export function Achievements() {
             );
           })}
         </div>
+        </>
       )}
     </section>
   );
