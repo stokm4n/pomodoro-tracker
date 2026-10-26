@@ -151,7 +151,39 @@ func (r *StatisticsRepository) GetLeaderboard(
 ) ([]model.LeaderboardEntry, error) {
 	rows, err := r.db.Query(
 		ctx,
-		`WITH user_totals AS (
+		`WITH lifetime_sessions AS (
+			SELECT user_id,
+			       COUNT(*) AS total_completed_pomodoros,
+			       COALESCE(SUM(elapsed_seconds), 0) AS total_focus_seconds
+			FROM pomodoro_sessions
+			WHERE session_type = 'work' AND status = 'completed'
+			GROUP BY user_id
+		), completed_task_totals AS (
+			SELECT user_id, COUNT(*) AS total_completed_tasks
+			FROM tasks
+			WHERE status = 'completed'
+			GROUP BY user_id
+		), activity_days AS (
+			SELECT user_id,
+			       (started_at AT TIME ZONE 'Europe/Moscow')::DATE AS activity_date
+			FROM pomodoro_sessions
+			WHERE session_type = 'work' AND status = 'completed'
+			GROUP BY user_id, (started_at AT TIME ZONE 'Europe/Moscow')::DATE
+		), activity_groups AS (
+			SELECT user_id,
+			       activity_date - ROW_NUMBER() OVER (
+			           PARTITION BY user_id ORDER BY activity_date
+			       )::INTEGER AS streak_group
+			FROM activity_days
+		), streak_lengths AS (
+			SELECT user_id, COUNT(*) AS streak_days
+			FROM activity_groups
+			GROUP BY user_id, streak_group
+		), longest_streaks AS (
+			SELECT user_id, MAX(streak_days) AS longest_streak
+			FROM streak_lengths
+			GROUP BY user_id
+		), user_totals AS (
 			SELECT u.id AS user_id,
 			       u.username,
 			       u.avatar_data,
@@ -192,8 +224,15 @@ func (r *StatisticsRepository) GetLeaderboard(
 		       created_at,
 		       completed_pomodoros,
 		       focus_seconds,
+		       COALESCE(lifetime_sessions.total_completed_pomodoros, 0),
+		       COALESCE(lifetime_sessions.total_focus_seconds, 0),
+		       COALESCE(completed_task_totals.total_completed_tasks, 0),
+		       COALESCE(longest_streaks.longest_streak, 0),
 		       user_id = $2
 		FROM ranked
+		LEFT JOIN lifetime_sessions USING (user_id)
+		LEFT JOIN completed_task_totals USING (user_id)
+		LEFT JOIN longest_streaks USING (user_id)
 		ORDER BY rank
 		LIMIT 50`,
 		days,

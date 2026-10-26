@@ -27,15 +27,19 @@ type Statistics struct {
 }
 
 type LeaderboardEntry struct {
-	Rank               int64     `json:"rank"`
-	UserID             int64     `json:"user_id"`
-	Username           string    `json:"username"`
-	AvatarData         string    `json:"avatar_data"`
-	Bio                string    `json:"bio"`
-	CreatedAt          time.Time `json:"created_at"`
-	CompletedPomodoros int64     `json:"completed_pomodoros"`
-	FocusSeconds       int64     `json:"focus_seconds"`
-	IsCurrentUser      bool      `json:"is_current_user"`
+	Rank                    int64     `json:"rank"`
+	UserID                  int64     `json:"user_id"`
+	Username                string    `json:"username"`
+	AvatarData              string    `json:"avatar_data"`
+	Bio                     string    `json:"bio"`
+	CreatedAt               time.Time `json:"created_at"`
+	CompletedPomodoros      int64     `json:"completed_pomodoros"`
+	FocusSeconds            int64     `json:"focus_seconds"`
+	TotalCompletedPomodoros int64     `json:"total_completed_pomodoros"`
+	TotalFocusSeconds       int64     `json:"total_focus_seconds"`
+	TotalCompletedTasks     int64     `json:"total_completed_tasks"`
+	LongestStreak           int64     `json:"longest_streak"`
+	IsCurrentUser           bool      `json:"is_current_user"`
 }
 
 type Leaderboard struct {

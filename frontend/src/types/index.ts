@@ -133,6 +133,10 @@ export interface LeaderboardEntry {
   created_at: string;
   completed_pomodoros: number;
   focus_seconds: number;
+  total_completed_pomodoros: number;
+  total_focus_seconds: number;
+  total_completed_tasks: number;
+  longest_streak: number;
   is_current_user: boolean;
 }
 

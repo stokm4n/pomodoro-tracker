@@ -3,6 +3,7 @@ import { ApiError } from "../api/client";
 import { getLeaderboard } from "../api/statistics";
 import { useAuth } from "../context/AuthContext";
 import type { Leaderboard as LeaderboardData, LeaderboardPeriod } from "../types";
+import { buildAchievements, isAchievementUnlocked } from "../utils/achievements";
 
 const periodLabels: Record<LeaderboardPeriod, string> = {
   week: "7 дней",
@@ -72,7 +73,16 @@ export function Leaderboard() {
         <div className="leaderboard-empty">Загружаем рейтинг…</div>
       ) : leaderboard?.entries.length ? (
         <ol className="leaderboard-list">
-          {leaderboard.entries.map((entry) => (
+          {leaderboard.entries.map((entry) => {
+            const achievements = buildAchievements({
+              completedPomodoros: entry.total_completed_pomodoros,
+              focusSeconds: entry.total_focus_seconds,
+              completedTasks: entry.total_completed_tasks,
+              longestStreak: entry.longest_streak,
+            });
+            const unlockedAchievements = achievements.filter(isAchievementUnlocked);
+
+            return (
             <li
               key={entry.user_id}
               className={`${entry.is_current_user ? "is-current" : ""} ${openedProfileId === entry.user_id ? "is-open" : ""}`}
@@ -89,6 +99,9 @@ export function Leaderboard() {
                 <div className="leaderboard-user">
                   <strong>{entry.username}</strong>
                   {entry.is_current_user && <span>Это вы</span>}
+                  <span className="leaderboard-achievement-count">
+                    🏆 {unlockedAchievements.length}/{achievements.length} достижений
+                  </span>
                 </div>
                 <div className="leaderboard-result">
                   <strong>{entry.completed_pomodoros}</strong>
@@ -126,11 +139,27 @@ export function Leaderboard() {
                     <span className="leaderboard-profile-date">
                       В проекте с {formatProfileDate(entry.created_at)}
                     </span>
+                    <div className="leaderboard-profile-achievements">
+                      <strong>Достижения</strong>
+                      {unlockedAchievements.length ? (
+                        <div className="leaderboard-badges">
+                          {unlockedAchievements.map((achievement) => (
+                            <span key={achievement.id} title={achievement.description}>
+                              <b aria-hidden="true">{achievement.icon}</b>
+                              {achievement.title}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>У пользователя пока нет открытых достижений.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
             </li>
-          ))}
+            );
+          })}
         </ol>
       ) : (
         <div className="leaderboard-empty">

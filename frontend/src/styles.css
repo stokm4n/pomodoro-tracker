@@ -651,6 +651,11 @@ select:focus-visible {
   font-size: 10px;
 }
 
+.leaderboard-user .leaderboard-achievement-count {
+  color: var(--tomato);
+  font-weight: 700;
+}
+
 .leaderboard-result {
   justify-items: end;
   text-align: right;
@@ -730,6 +735,46 @@ select:focus-visible {
   margin-top: 13px;
   color: var(--muted);
   font-size: 10px;
+}
+
+.leaderboard-profile-achievements {
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 17px;
+}
+
+.leaderboard-profile-achievements > strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 11px;
+}
+
+.leaderboard-profile-achievements > p {
+  font-size: 11px;
+}
+
+.leaderboard-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.leaderboard-badges span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(217, 79, 61, 0.24);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--tomato-dark);
+  background: var(--tomato-soft);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.leaderboard-badges b {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .leaderboard-empty {
