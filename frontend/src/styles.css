@@ -2777,9 +2777,65 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   font-size: 10px;
 }
 
-.lofi-player-heading .text-button {
+.lofi-window-actions {
+  display: flex;
   flex: 0 0 auto;
-  font-size: 10px;
+  align-items: center;
+  gap: 5px;
+}
+
+.lofi-window-actions button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lofi-window-actions button:hover {
+  border-color: var(--tomato);
+  color: var(--tomato);
+  background: rgba(217, 79, 61, 0.08);
+}
+
+.lofi-window-actions button span {
+  transform: translateY(-1px);
+}
+
+.lofi-minimized-tab {
+  position: fixed;
+  z-index: 1100;
+  right: 0;
+  bottom: 92px;
+  display: flex;
+  width: 44px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-right: 0;
+  border-radius: 24px 0 0 24px;
+  color: var(--ink);
+  background: #f7f3ed;
+  box-shadow: 0 12px 34px rgba(43, 35, 29, 0.2);
+  cursor: pointer;
+}
+
+.lofi-minimized-tab:hover {
+  color: var(--tomato);
+}
+
+.lofi-minimized-chevron {
+  color: var(--tomato);
+  font-size: 24px;
+  line-height: 1;
 }
 
 .lofi-player iframe {
@@ -3179,6 +3235,10 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 }
 
 :root[data-theme="dark"] .lofi-player {
+  background: #2d2a27;
+}
+
+:root[data-theme="dark"] .lofi-minimized-tab {
   background: #2d2a27;
 }
 

@@ -307,9 +307,24 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
                 <span>Разные треки из плейлиста SoundCloud</span>
               </div>
             </div>
-            <button className="text-button" type="button" onClick={togglePlayer}>
-              Закрыть
-            </button>
+            <div className="lofi-window-actions">
+              <button
+                type="button"
+                aria-label="Свернуть lo-fi-плеер"
+                title="Свернуть"
+                onClick={() => setIsHidden(true)}
+              >
+                <span aria-hidden="true">−</span>
+              </button>
+              <button
+                type="button"
+                aria-label="Закрыть lo-fi-плеер"
+                title="Закрыть"
+                onClick={togglePlayer}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
           </div>
           <iframe
             ref={frame}
@@ -347,6 +362,17 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
             <output>{volume}%</output>
           </label>
         </aside>
+      )}
+      {isOpen && isHidden && (
+        <button
+          className="lofi-minimized-tab"
+          type="button"
+          aria-label="Развернуть lo-fi-плеер"
+          title="Развернуть Lo-fi"
+          onClick={() => setIsHidden(false)}
+        >
+          <span className="lofi-minimized-chevron" aria-hidden="true">‹</span>
+        </button>
       )}
     </LofiPlayerContext.Provider>
   );

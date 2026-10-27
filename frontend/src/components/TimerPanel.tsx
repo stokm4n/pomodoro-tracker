@@ -32,13 +32,7 @@ export function TimerPanel({
   onSelectTask,
 }: TimerPanelProps) {
   const { token, logout } = useAuth();
-  const {
-    hide: hideLofi,
-    isHidden: lofiHidden,
-    isOpen: lofiOpen,
-    show: showLofi,
-    toggle: toggleLofi,
-  } = useLofiPlayer();
+  const { isOpen: lofiOpen, toggle: toggleLofi } = useLofiPlayer();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [sessionType, setSessionType] = useState<SessionType>("work");
   const [session, setSession] = useState<PomodoroSession | null>(null);
@@ -330,7 +324,6 @@ export function TimerPanel({
   }
 
   function leaveDeepFocus() {
-    showLofi();
     setDeepFocusActive(false);
     void releaseScreenWakeLock();
     if (document.fullscreenElement && document.exitFullscreen) {
@@ -489,15 +482,6 @@ export function TimerPanel({
               <button className="text-button" type="button" onClick={leaveDeepFocus}>
                 Выйти из режима
               </button>
-              {lofiOpen && (
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={lofiHidden ? showLofi : hideLofi}
-                >
-                  {lofiHidden ? "Показать Lo-fi" : "Скрыть Lo-fi"}
-                </button>
-              )}
             </div>
           </div>
           <p className="deep-focus-reminder">
