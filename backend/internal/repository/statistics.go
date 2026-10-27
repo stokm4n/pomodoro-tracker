@@ -141,6 +141,72 @@ func (r *StatisticsRepository) Get(
 		return model.Statistics{}, fmt.Errorf("collect task statistics: %w", err)
 	}
 
+	breakRows, err := r.db.Query(
+		ctx,
+		`WITH completed_breaks AS (
+			SELECT breaks.started_at AS event_time,
+			       breaks.ended_at,
+			       breaks.break_activities,
+			       breaks.readiness_score,
+			       (
+			           SELECT MIN(work_sessions.started_at)
+			           FROM pomodoro_sessions AS work_sessions
+			           WHERE work_sessions.user_id = breaks.user_id
+			             AND work_sessions.session_type = 'work'
+			             AND work_sessions.started_at >= breaks.ended_at
+			       ) AS next_work_started_at
+			FROM pomodoro_sessions AS breaks
+			WHERE breaks.user_id = $1
+			  AND breaks.session_type IN ('short_break', 'long_break')
+			  AND breaks.status = 'completed'
+			  AND cardinality(breaks.break_activities) > 0
+		), filtered_breaks AS (
+			SELECT * FROM completed_breaks WHERE `+statisticsPeriodCondition+`
+		), expanded AS (
+			SELECT UNNEST(break_activities) AS activity,
+			       readiness_score,
+			       ended_at,
+			       next_work_started_at
+			FROM filtered_breaks
+		)
+		SELECT activity,
+		       COUNT(*) AS uses,
+		       COALESCE(AVG(readiness_score), 0)::DOUBLE PRECISION,
+		       COUNT(readiness_score) AS readiness_responses,
+		       COALESCE(
+		           100.0 * COUNT(*) FILTER (
+		               WHERE next_work_started_at <= ended_at + INTERVAL '2 minutes'
+		           ) / NULLIF(COUNT(*) FILTER (
+		               WHERE next_work_started_at IS NOT NULL
+		                  OR ended_at <= NOW() - INTERVAL '2 minutes'
+		           ), 0),
+		           0
+		       )::DOUBLE PRECISION AS return_rate,
+		       COUNT(*) FILTER (
+		           WHERE next_work_started_at IS NOT NULL
+		              OR ended_at <= NOW() - INTERVAL '2 minutes'
+		       ) AS return_evaluations
+		FROM expanded
+		GROUP BY activity
+		ORDER BY ARRAY_POSITION(
+		    ARRAY['water', 'eyes', 'music', 'stretch', 'walk', 'meal']::TEXT[],
+		    activity
+		)`,
+		userID,
+		days,
+	)
+	if err != nil {
+		return model.Statistics{}, fmt.Errorf("select break activity statistics: %w", err)
+	}
+	statistics.BreakActivities, err = pgx.CollectRows(
+		breakRows,
+		pgx.RowToStructByPos[model.BreakActivityStatistics],
+	)
+	breakRows.Close()
+	if err != nil {
+		return model.Statistics{}, fmt.Errorf("collect break activity statistics: %w", err)
+	}
+
 	return statistics, nil
 }
 

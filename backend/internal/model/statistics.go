@@ -16,14 +16,24 @@ type TaskStatistics struct {
 	Deleted            bool   `json:"deleted"`
 }
 
+type BreakActivityStatistics struct {
+	Activity           string  `json:"activity"`
+	Uses               int64   `json:"uses"`
+	AverageReadiness   float64 `json:"average_readiness"`
+	ReadinessResponses int64   `json:"readiness_responses"`
+	ReturnRate         float64 `json:"return_rate"`
+	ReturnEvaluations  int64   `json:"return_evaluations"`
+}
+
 type Statistics struct {
-	Period             string            `json:"period"`
-	CompletedPomodoros int64             `json:"completed_pomodoros"`
-	FocusSeconds       int64             `json:"focus_seconds"`
-	CompletedTasks     int64             `json:"completed_tasks"`
-	CancelledSessions  int64             `json:"cancelled_sessions"`
-	Daily              []DailyStatistics `json:"daily"`
-	TopTasks           []TaskStatistics  `json:"top_tasks"`
+	Period             string                    `json:"period"`
+	CompletedPomodoros int64                     `json:"completed_pomodoros"`
+	FocusSeconds       int64                     `json:"focus_seconds"`
+	CompletedTasks     int64                     `json:"completed_tasks"`
+	CancelledSessions  int64                     `json:"cancelled_sessions"`
+	Daily              []DailyStatistics         `json:"daily"`
+	TopTasks           []TaskStatistics          `json:"top_tasks"`
+	BreakActivities    []BreakActivityStatistics `json:"break_activities"`
 }
 
 type LeaderboardEntry struct {

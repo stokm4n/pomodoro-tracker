@@ -5,6 +5,7 @@ import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useLofiPlayer } from "../context/LofiPlayerContext";
 import type {
+  BreakActivity,
   PomodoroSession,
   SessionType,
   Settings,
@@ -26,6 +27,20 @@ const sessionLabels: Record<SessionType, string> = {
   long_break: "Длинный перерыв",
 };
 
+const breakActivityOptions: Array<{
+  id: BreakActivity;
+  emoji: string;
+  label: string;
+  minimumMinutes: number;
+}> = [
+  { id: "water", emoji: "💧", label: "Вода", minimumMinutes: 1 },
+  { id: "eyes", emoji: "👀", label: "Отдых для глаз", minimumMinutes: 1 },
+  { id: "music", emoji: "🎵", label: "Музыка", minimumMinutes: 2 },
+  { id: "stretch", emoji: "🧘", label: "Разминка", minimumMinutes: 4 },
+  { id: "walk", emoji: "🚶", label: "Прогулка", minimumMinutes: 10 },
+  { id: "meal", emoji: "🍽️", label: "Приём пищи", minimumMinutes: 20 },
+];
+
 export function TimerPanel({
   selectedTaskId,
   selectedTaskTitle,
@@ -41,6 +56,17 @@ export function TimerPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [deepFocusActive, setDeepFocusActive] = useState(false);
+  const [breakPlan, setBreakPlan] = useState<{
+    sessionType: "short_break" | "long_break";
+    durationMinutes: number;
+  } | null>(null);
+  const [selectedBreakActivities, setSelectedBreakActivities] = useState<BreakActivity[]>([]);
+  const [pendingBreakPlan, setPendingBreakPlan] = useState<{
+    sessionType: "short_break" | "long_break";
+    activities: BreakActivity[];
+  } | null>(null);
+  const [readinessSessionID, setReadinessSessionID] = useState<number | null>(null);
+  const [readinessSaving, setReadinessSaving] = useState(false);
   const autoCompleting = useRef(false);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
 
@@ -122,8 +148,7 @@ export function TimerPanel({
       sessionsApi
         .completeSession(token, sessionID)
         .then((completion) => {
-          prepareNextInterval(completion.next_session_type);
-          notifyAboutCompletion(completion.next_session_type);
+          handleCompletedSession(completion);
         })
         .catch(handleError)
         .finally(() => setBusy(false));
@@ -241,6 +266,53 @@ export function TimerPanel({
     setSessionType(nextType);
   }
 
+  function handleCompletedSession(completion: sessionsApi.SessionCompletionResponse) {
+    prepareNextInterval(completion.next_session_type);
+    notifyAboutCompletion(completion.next_session_type);
+
+    if (completion.session.session_type === "work" && completion.next_session_type !== "work") {
+      const durationMinutes = completion.next_session_type === "long_break"
+        ? settings?.long_break_minutes ?? 15
+        : settings?.short_break_minutes ?? 5;
+      setSelectedBreakActivities([]);
+      setBreakPlan({
+        sessionType: completion.next_session_type,
+        durationMinutes,
+      });
+    } else if (completion.session.session_type !== "work") {
+      setReadinessSessionID(completion.session.id);
+    }
+  }
+
+  function toggleBreakActivity(activity: BreakActivity) {
+    setSelectedBreakActivities((selected) => selected.includes(activity)
+      ? selected.filter((item) => item !== activity)
+      : [...selected, activity]);
+  }
+
+  function finishBreakPlanning(skip = false) {
+    if (!breakPlan) return;
+    setPendingBreakPlan({
+      sessionType: breakPlan.sessionType,
+      activities: skip ? [] : selectedBreakActivities,
+    });
+    setBreakPlan(null);
+  }
+
+  async function submitReadiness(score: number) {
+    if (!token || readinessSessionID === null) return;
+    setReadinessSaving(true);
+    setError("");
+    try {
+      await sessionsApi.saveReadiness(token, readinessSessionID, score);
+      setReadinessSessionID(null);
+    } catch (requestError) {
+      handleError(requestError);
+    } finally {
+      setReadinessSaving(false);
+    }
+  }
+
   async function start() {
     if (!token) return;
     setBusy(true);
@@ -257,9 +329,13 @@ export function TimerPanel({
       const created = await sessionsApi.startSession(token, {
         session_type: sessionType,
         task_id: sessionType === "work" ? selectedTaskId : null,
+        break_activities: sessionType !== "work" && pendingBreakPlan?.sessionType === sessionType
+          ? pendingBreakPlan.activities
+          : [],
       });
       setSession(created);
       setRemainingSeconds(created.remaining_seconds);
+      if (sessionType !== "work") setPendingBreakPlan(null);
     } catch (requestError) {
       handleError(requestError);
     } finally {
@@ -291,8 +367,7 @@ export function TimerPanel({
     try {
       prepareCompletionSound();
       const completion = await sessionsApi.completeSession(token, session.id);
-      prepareNextInterval(completion.next_session_type);
-      notifyAboutCompletion(completion.next_session_type);
+      handleCompletedSession(completion);
     } catch (requestError) {
       handleError(requestError);
     } finally {
@@ -489,6 +564,75 @@ export function TimerPanel({
           </p>
         </div>
       )}
+
+      {breakPlan && (
+        <div className="break-dialog-backdrop" role="presentation">
+          <section className="break-dialog" role="dialog" aria-modal="true" aria-labelledby="break-plan-title">
+            <span className="eyebrow">Перерыв · {breakPlan.durationMinutes} мин</span>
+            <h2 id="break-plan-title">Как планируете отдохнуть?</h2>
+            <p>Можно выбрать несколько вариантов.</p>
+            <div className="break-activity-options">
+              {breakActivityOptions
+                .filter((activity) => breakPlan.durationMinutes >= activity.minimumMinutes)
+                .map((activity) => {
+                  const selected = selectedBreakActivities.includes(activity.id);
+                  return (
+                    <button
+                      key={activity.id}
+                      className={selected ? "is-selected" : ""}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleBreakActivity(activity.id)}
+                    >
+                      <span aria-hidden="true">{activity.emoji}</span>
+                      <strong>{activity.label}</strong>
+                      <i aria-hidden="true">✓</i>
+                    </button>
+                  );
+                })}
+            </div>
+            <div className="break-dialog-actions">
+              <button className="button button-primary" type="button" onClick={() => finishBreakPlanning()}>
+                Готово
+              </button>
+              <button className="text-button" type="button" onClick={() => finishBreakPlanning(true)}>
+                Пропустить
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {readinessSessionID !== null && (
+        <div className="break-dialog-backdrop" role="presentation">
+          <section className="break-dialog readiness-dialog" role="dialog" aria-modal="true" aria-labelledby="readiness-title">
+            <span className="eyebrow">Перерыв завершён</span>
+            <h2 id="readiness-title">Насколько вы готовы продолжить работу?</h2>
+            <p>1 — нужен дополнительный отдых, 10 — полностью готовы.</p>
+            <div className="readiness-scale" aria-label="Оценка готовности от 1 до 10">
+              {Array.from({ length: 10 }, (_, index) => index + 1).map((score) => (
+                <button
+                  key={score}
+                  type="button"
+                  disabled={readinessSaving}
+                  aria-label={`Готовность ${score} из 10`}
+                  onClick={() => submitReadiness(score)}
+                >
+                  {score}
+                </button>
+              ))}
+            </div>
+            <button
+              className="text-button"
+              type="button"
+              disabled={readinessSaving}
+              onClick={() => setReadinessSessionID(null)}
+            >
+              Пропустить
+            </button>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -505,6 +649,10 @@ function translateSessionError(message: string) {
       return "Это действие недоступно для текущего состояния таймера.";
     case "session type must be 'work', 'short_break' or 'long_break'":
       return "Выбран неизвестный тип интервала.";
+    case "invalid break activity for this break duration":
+      return "Один из выбранных видов отдыха не подходит для длительности перерыва.";
+    case "readiness score must be between 1 and 10":
+      return "Оценка готовности должна быть от 1 до 10.";
     default:
       return message;
   }

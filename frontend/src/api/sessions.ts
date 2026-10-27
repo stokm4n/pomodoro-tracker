@@ -1,5 +1,10 @@
 import { apiRequest } from "./client";
-import type { PomodoroSession, SessionHistoryItem, SessionType } from "../types";
+import type {
+  BreakActivity,
+  PomodoroSession,
+  SessionHistoryItem,
+  SessionType,
+} from "../types";
 
 interface SessionResponse {
   session: PomodoroSession;
@@ -17,6 +22,7 @@ export interface SessionCompletionResponse extends SessionResponse {
 export interface StartSessionInput {
   session_type: SessionType;
   task_id: number | null;
+  break_activities: BreakActivity[];
 }
 
 export async function startSession(
@@ -77,3 +83,16 @@ export async function completeSession(
 
 export const cancelSession = (token: string, sessionId: number) =>
   changeSessionState(token, sessionId, "cancel");
+
+export async function saveReadiness(
+  token: string,
+  sessionId: number,
+  score: number,
+): Promise<PomodoroSession> {
+  const response = await apiRequest<SessionResponse>(
+    `/sessions/${sessionId}/readiness`,
+    { method: "POST", body: JSON.stringify({ score }) },
+    token,
+  );
+  return response.session;
+}

@@ -3,11 +3,22 @@ import { ApiError } from "../api/client";
 import { deleteTaskFromStatistics, getStatistics } from "../api/statistics";
 import { useAuth } from "../context/AuthContext";
 import type {
+  BreakActivity,
+  BreakActivityStatistics,
   DailyStatistics,
   SessionHistoryItem,
   Statistics,
   StatisticsPeriod,
 } from "../types";
+
+const breakActivityLabels: Record<BreakActivity, { emoji: string; label: string }> = {
+  water: { emoji: "💧", label: "Вода" },
+  eyes: { emoji: "👀", label: "Отдых для глаз" },
+  music: { emoji: "🎵", label: "Музыка" },
+  stretch: { emoji: "🧘", label: "Разминка" },
+  walk: { emoji: "🚶", label: "Прогулка" },
+  meal: { emoji: "🍽️", label: "Приём пищи" },
+};
 
 const periodLabels: Record<StatisticsPeriod, string> = {
   today: "Сегодня",
@@ -239,8 +250,61 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
                 )}
               </section>
             </div>
+
+            <BreakEffectiveness activities={statistics.break_activities} />
           </>
         ) : null}
+    </section>
+  );
+}
+
+function BreakEffectiveness({ activities }: { activities: BreakActivityStatistics[] }) {
+  return (
+    <section className="statistics-card break-effectiveness" aria-labelledby="break-effectiveness-title">
+      <div className="statistics-card-heading">
+        <div>
+          <span className="eyebrow">Восстановление</span>
+          <h2 id="break-effectiveness-title">Эффективность отдыха</h2>
+        </div>
+        <span>Готовность и возврат к работе</span>
+      </div>
+
+      {activities.length === 0 ? (
+        <StatisticsEmpty text="Выберите вид отдыха во время следующего перерыва." />
+      ) : (
+        <div className="break-effectiveness-list">
+          {activities.map((activity) => {
+            const details = breakActivityLabels[activity.activity];
+            return (
+              <article key={activity.activity}>
+                <span className="break-effectiveness-icon" aria-hidden="true">{details.emoji}</span>
+                <div className="break-effectiveness-copy">
+                  <strong>{details.label}</strong>
+                  <span>{activity.uses} использований</span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Готовность</dt>
+                    <dd>
+                      {activity.readiness_responses > 0
+                        ? `${activity.average_readiness.toFixed(1)} / 10`
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Возврат вовремя</dt>
+                    <dd>
+                      {activity.return_evaluations > 0
+                        ? `${Math.round(activity.return_rate)}%`
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

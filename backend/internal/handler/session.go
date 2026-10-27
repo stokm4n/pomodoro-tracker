@@ -12,8 +12,13 @@ import (
 )
 
 type startSessionRequest struct {
-	SessionType string `json:"session_type"`
-	TaskID      *int64 `json:"task_id"`
+	SessionType     string   `json:"session_type"`
+	TaskID          *int64   `json:"task_id"`
+	BreakActivities []string `json:"break_activities"`
+}
+
+type readinessRequest struct {
+	Score int `json:"score"`
 }
 
 type SessionHandler struct {
@@ -41,7 +46,13 @@ func (h *SessionHandler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessions.Start(r.Context(), user.ID, request.TaskID, request.SessionType)
+	session, err := h.sessions.Start(
+		r.Context(),
+		user.ID,
+		request.TaskID,
+		request.SessionType,
+		request.BreakActivities,
+	)
 	if err != nil {
 		h.writeSessionError(w, "start", err)
 		return
@@ -99,6 +110,31 @@ func (h *SessionHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	h.changeState(w, r, "cancel")
 }
 
+func (h *SessionHandler) SaveReadiness(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "authorization required")
+		return
+	}
+	sessionID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || sessionID <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid session id")
+		return
+	}
+	var request readinessRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON request")
+		return
+	}
+
+	session, err := h.sessions.SaveReadiness(r.Context(), user.ID, sessionID, request.Score)
+	if err != nil {
+		h.writeSessionError(w, "save readiness", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"session": session})
+}
+
 func (h *SessionHandler) changeState(w http.ResponseWriter, r *http.Request, action string) {
 	user, ok := middleware.UserFromContext(r.Context())
 	if !ok {
@@ -143,7 +179,9 @@ func (h *SessionHandler) changeState(w http.ResponseWriter, r *http.Request, act
 func (h *SessionHandler) writeSessionError(w http.ResponseWriter, action string, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidSessionType),
-		errors.Is(err, service.ErrSessionTaskNotFound):
+		errors.Is(err, service.ErrSessionTaskNotFound),
+		errors.Is(err, service.ErrInvalidBreakActivity),
+		errors.Is(err, service.ErrInvalidReadinessScore):
 		writeError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, service.ErrSessionNotFound):
 		writeError(w, http.StatusNotFound, err.Error())

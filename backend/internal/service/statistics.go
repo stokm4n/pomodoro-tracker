@@ -78,5 +78,8 @@ func (s *StatisticsService) Get(
 	if statistics.TopTasks == nil {
 		statistics.TopTasks = make([]model.TaskStatistics, 0)
 	}
+	if statistics.BreakActivities == nil {
+		statistics.BreakActivities = make([]model.BreakActivityStatistics, 0)
+	}
 	return statistics, nil
 }

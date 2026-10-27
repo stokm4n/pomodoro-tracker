@@ -33,13 +33,14 @@ func (r *SessionRepository) Start(
 	taskID *int64,
 	sessionType string,
 	durationSeconds int,
+	breakActivities []string,
 ) (model.PomodoroSession, error) {
 	session, err := scanSession(r.db.QueryRow(
 		ctx,
 		`INSERT INTO pomodoro_sessions (
-			user_id, task_id, session_type, planned_duration_seconds
+			user_id, task_id, session_type, planned_duration_seconds, break_activities
 		)
-		SELECT $1, $2::BIGINT, $3, $4
+		SELECT $1, $2::BIGINT, $3, $4, $5::TEXT[]
 		WHERE $2::BIGINT IS NULL OR EXISTS (
 			SELECT 1 FROM tasks
 			WHERE id = $2::BIGINT AND user_id = $1
@@ -47,11 +48,13 @@ func (r *SessionRepository) Start(
 		)
 		RETURNING id, user_id, task_id, session_type,
 		          planned_duration_seconds, elapsed_seconds, status,
+		          break_activities, readiness_score,
 		          started_at, state_changed_at, ended_at`,
 		userID,
 		taskID,
 		sessionType,
 		durationSeconds,
+		breakActivities,
 	))
 	if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, ErrSessionNotFound) {
 		return model.PomodoroSession{}, ErrSessionTaskNotFound
@@ -74,6 +77,7 @@ func (r *SessionRepository) GetCurrent(
 		ctx,
 		`SELECT id, user_id, task_id, session_type,
 		        planned_duration_seconds, elapsed_seconds, status,
+		        break_activities, readiness_score,
 		        started_at, state_changed_at, ended_at
 		 FROM pomodoro_sessions
 		 WHERE user_id = $1 AND status IN ('running', 'paused')`,
@@ -90,6 +94,7 @@ func (r *SessionRepository) ListHistory(
 		`SELECT sessions.id, sessions.task_id, tasks.title,
 		        sessions.session_type, sessions.planned_duration_seconds,
 		        sessions.elapsed_seconds, sessions.status,
+		        sessions.break_activities, sessions.readiness_score,
 		        sessions.started_at, sessions.ended_at
 		 FROM pomodoro_sessions AS sessions
 		 LEFT JOIN tasks ON tasks.id = sessions.task_id
@@ -143,6 +148,30 @@ func (r *SessionRepository) Cancel(
 	return r.changeState(ctx, userID, sessionID, "cancel")
 }
 
+func (r *SessionRepository) SaveReadiness(
+	ctx context.Context,
+	userID int64,
+	sessionID int64,
+	score int,
+) (model.PomodoroSession, error) {
+	return scanSession(r.db.QueryRow(
+		ctx,
+		`UPDATE pomodoro_sessions
+		 SET readiness_score = $3
+		 WHERE id = $1
+		   AND user_id = $2
+		   AND session_type IN ('short_break', 'long_break')
+		   AND status = 'completed'
+		 RETURNING id, user_id, task_id, session_type,
+		           planned_duration_seconds, elapsed_seconds, status,
+		           break_activities, readiness_score,
+		           started_at, state_changed_at, ended_at`,
+		sessionID,
+		userID,
+		score,
+	))
+}
+
 func (r *SessionRepository) CountCompletedWork(
 	ctx context.Context,
 	userID int64,
@@ -183,6 +212,7 @@ func (r *SessionRepository) changeState(
 		 WHERE id = $1 AND user_id = $2 AND status = 'running'
 		 RETURNING id, user_id, task_id, session_type,
 		           planned_duration_seconds, elapsed_seconds, status,
+		           break_activities, readiness_score,
 		           started_at, state_changed_at, ended_at`
 	case "resume":
 		query = `UPDATE pomodoro_sessions
@@ -190,6 +220,7 @@ func (r *SessionRepository) changeState(
 		 WHERE id = $1 AND user_id = $2 AND status = 'paused'
 		 RETURNING id, user_id, task_id, session_type,
 		           planned_duration_seconds, elapsed_seconds, status,
+		           break_activities, readiness_score,
 		           started_at, state_changed_at, ended_at`
 	case "complete", "cancel":
 		status := "completed"
@@ -207,6 +238,7 @@ func (r *SessionRepository) changeState(
 		 WHERE id = $1 AND user_id = $2 AND status IN ('running', 'paused')
 		 RETURNING id, user_id, task_id, session_type,
 		           planned_duration_seconds, elapsed_seconds, status,
+		           break_activities, readiness_score,
 		           started_at, state_changed_at, ended_at`, status)
 	default:
 		return model.PomodoroSession{}, ErrInvalidSessionState
@@ -236,6 +268,8 @@ func scanSession(row sessionRow) (model.PomodoroSession, error) {
 		&session.PlannedDurationSeconds,
 		&session.ElapsedSeconds,
 		&session.Status,
+		&session.BreakActivities,
+		&session.ReadinessScore,
 		&session.StartedAt,
 		&session.StateChangedAt,
 		&session.EndedAt,

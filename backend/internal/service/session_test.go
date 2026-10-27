@@ -11,13 +11,14 @@ import (
 )
 
 type sessionRepositoryStub struct {
-	startedType     string
-	startedDuration int
-	startResult     model.PomodoroSession
-	currentResult   model.PomodoroSession
-	currentErr      error
-	completeResult  model.PomodoroSession
-	completedWork   int
+	startedType       string
+	startedDuration   int
+	startedActivities []string
+	startResult       model.PomodoroSession
+	currentResult     model.PomodoroSession
+	currentErr        error
+	completeResult    model.PomodoroSession
+	completedWork     int
 }
 
 func (r *sessionRepositoryStub) Start(
@@ -26,9 +27,11 @@ func (r *sessionRepositoryStub) Start(
 	_ *int64,
 	sessionType string,
 	duration int,
+	activities []string,
 ) (model.PomodoroSession, error) {
 	r.startedType = sessionType
 	r.startedDuration = duration
+	r.startedActivities = activities
 	return r.startResult, nil
 }
 
@@ -60,6 +63,15 @@ func (r *sessionRepositoryStub) Cancel(context.Context, int64, int64) (model.Pom
 	return model.PomodoroSession{}, nil
 }
 
+func (r *sessionRepositoryStub) SaveReadiness(
+	context.Context,
+	int64,
+	int64,
+	int,
+) (model.PomodoroSession, error) {
+	return model.PomodoroSession{}, nil
+}
+
 type sessionSettingsStub struct {
 	settings model.Settings
 }
@@ -82,7 +94,7 @@ func TestSessionStartUsesConfiguredDuration(t *testing.T) {
 	}}
 	sessions := NewSessionService(repositoryStub, settingsStub)
 
-	_, err := sessions.Start(context.Background(), 7, nil, "short_break")
+	_, err := sessions.Start(context.Background(), 7, nil, "short_break", []string{"water", "eyes"})
 	if err != nil {
 		t.Fatalf("Start() returned an error: %v", err)
 	}
@@ -94,9 +106,47 @@ func TestSessionStartUsesConfiguredDuration(t *testing.T) {
 func TestSessionStartRejectsInvalidType(t *testing.T) {
 	sessions := NewSessionService(&sessionRepositoryStub{}, &sessionSettingsStub{})
 
-	_, err := sessions.Start(context.Background(), 1, nil, "unknown")
+	_, err := sessions.Start(context.Background(), 1, nil, "unknown", nil)
 	if !errors.Is(err, ErrInvalidSessionType) {
 		t.Fatalf("expected ErrInvalidSessionType, got %v", err)
+	}
+}
+
+func TestSessionStartFiltersDuplicateBreakActivities(t *testing.T) {
+	repositoryStub := &sessionRepositoryStub{}
+	settingsStub := &sessionSettingsStub{settings: model.Settings{ShortBreakMinutes: 5}}
+	sessions := NewSessionService(repositoryStub, settingsStub)
+
+	_, err := sessions.Start(
+		context.Background(),
+		1,
+		nil,
+		"short_break",
+		[]string{"water", "eyes", "water"},
+	)
+	if err != nil {
+		t.Fatalf("Start() returned an error: %v", err)
+	}
+	if len(repositoryStub.startedActivities) != 2 {
+		t.Fatalf("expected two unique activities, got %v", repositoryStub.startedActivities)
+	}
+}
+
+func TestSessionStartRejectsActivityThatDoesNotFitBreak(t *testing.T) {
+	sessions := NewSessionService(
+		&sessionRepositoryStub{},
+		&sessionSettingsStub{settings: model.Settings{ShortBreakMinutes: 5}},
+	)
+
+	_, err := sessions.Start(
+		context.Background(),
+		1,
+		nil,
+		"short_break",
+		[]string{"walk"},
+	)
+	if !errors.Is(err, ErrInvalidBreakActivity) {
+		t.Fatalf("expected ErrInvalidBreakActivity, got %v", err)
 	}
 }
 

@@ -69,6 +69,7 @@ export type SettingsInput = Omit<Settings, "user_id" | "updated_at">;
 
 export type SessionType = "work" | "short_break" | "long_break";
 export type SessionStatus = "running" | "paused" | "completed" | "cancelled";
+export type BreakActivity = "water" | "eyes" | "music" | "stretch" | "walk" | "meal";
 
 export interface PomodoroSession {
   id: number;
@@ -79,6 +80,8 @@ export interface PomodoroSession {
   elapsed_seconds: number;
   remaining_seconds: number;
   status: SessionStatus;
+  break_activities: BreakActivity[];
+  readiness_score: number | null;
   started_at: string;
   state_changed_at: string;
   ended_at: string | null;
@@ -92,6 +95,8 @@ export interface SessionHistoryItem {
   planned_duration_seconds: number;
   elapsed_seconds: number;
   status: "completed" | "cancelled";
+  break_activities: BreakActivity[];
+  readiness_score: number | null;
   started_at: string;
   ended_at: string | null;
 }
@@ -112,6 +117,15 @@ export interface TaskStatistics {
   deleted: boolean;
 }
 
+export interface BreakActivityStatistics {
+  activity: BreakActivity;
+  uses: number;
+  average_readiness: number;
+  readiness_responses: number;
+  return_rate: number;
+  return_evaluations: number;
+}
+
 export interface Statistics {
   period: StatisticsPeriod;
   completed_pomodoros: number;
@@ -120,6 +134,7 @@ export interface Statistics {
   cancelled_sessions: number;
   daily: DailyStatistics[];
   top_tasks: TaskStatistics[];
+  break_activities: BreakActivityStatistics[];
 }
 
 export type LeaderboardPeriod = "week" | "all";

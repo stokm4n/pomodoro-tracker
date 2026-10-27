@@ -12,6 +12,8 @@ type PomodoroSession struct {
 	ElapsedSeconds         int        `json:"elapsed_seconds"`
 	RemainingSeconds       int        `json:"remaining_seconds"`
 	Status                 string     `json:"status"`
+	BreakActivities        []string   `json:"break_activities"`
+	ReadinessScore         *int       `json:"readiness_score"`
 	StartedAt              time.Time  `json:"started_at"`
 	StateChangedAt         time.Time  `json:"state_changed_at"`
 	EndedAt                *time.Time `json:"ended_at"`
@@ -26,6 +28,8 @@ type SessionHistoryItem struct {
 	PlannedDurationSeconds int        `json:"planned_duration_seconds"`
 	ElapsedSeconds         int        `json:"elapsed_seconds"`
 	Status                 string     `json:"status"`
+	BreakActivities        []string   `json:"break_activities"`
+	ReadinessScore         *int       `json:"readiness_score"`
 	StartedAt              time.Time  `json:"started_at"`
 	EndedAt                *time.Time `json:"ended_at"`
 }

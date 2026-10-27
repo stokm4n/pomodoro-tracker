@@ -143,6 +143,10 @@ func run() error {
 		middleware.RequireAuth(authService, http.HandlerFunc(sessionHandler.Cancel)),
 	)
 	mux.Handle(
+		"POST /api/sessions/{id}/readiness",
+		middleware.RequireAuth(authService, http.HandlerFunc(sessionHandler.SaveReadiness)),
+	)
+	mux.Handle(
 		"GET /api/statistics",
 		middleware.RequireAuth(authService, http.HandlerFunc(statisticsHandler.Get)),
 	)

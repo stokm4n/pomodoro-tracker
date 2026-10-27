@@ -10,21 +10,24 @@ import (
 )
 
 var (
-	ErrInvalidSessionType  = errors.New("session type must be 'work', 'short_break' or 'long_break'")
-	ErrActiveSessionExists = errors.New("finish the current timer before starting another one")
-	ErrSessionTaskNotFound = errors.New("active task not found")
-	ErrSessionNotFound     = errors.New("active session not found")
-	ErrInvalidSessionState = errors.New("timer cannot perform this action in its current state")
+	ErrInvalidSessionType    = errors.New("session type must be 'work', 'short_break' or 'long_break'")
+	ErrActiveSessionExists   = errors.New("finish the current timer before starting another one")
+	ErrSessionTaskNotFound   = errors.New("active task not found")
+	ErrSessionNotFound       = errors.New("active session not found")
+	ErrInvalidSessionState   = errors.New("timer cannot perform this action in its current state")
+	ErrInvalidBreakActivity  = errors.New("invalid break activity for this break duration")
+	ErrInvalidReadinessScore = errors.New("readiness score must be between 1 and 10")
 )
 
 type sessionRepository interface {
-	Start(context.Context, int64, *int64, string, int) (model.PomodoroSession, error)
+	Start(context.Context, int64, *int64, string, int, []string) (model.PomodoroSession, error)
 	GetCurrent(context.Context, int64) (model.PomodoroSession, error)
 	ListHistory(context.Context, int64) ([]model.SessionHistoryItem, error)
 	Pause(context.Context, int64, int64) (model.PomodoroSession, error)
 	Resume(context.Context, int64, int64) (model.PomodoroSession, error)
 	Complete(context.Context, int64, int64) (model.PomodoroSession, error)
 	Cancel(context.Context, int64, int64) (model.PomodoroSession, error)
+	SaveReadiness(context.Context, int64, int64, int) (model.PomodoroSession, error)
 	CountCompletedWork(context.Context, int64) (int, error)
 }
 
@@ -56,6 +59,7 @@ func (s *SessionService) Start(
 	userID int64,
 	taskID *int64,
 	sessionType string,
+	breakActivities []string,
 ) (model.PomodoroSession, error) {
 	settings, err := s.settings.GetByUser(ctx, userID)
 	if err != nil {
@@ -73,8 +77,19 @@ func (s *SessionService) Start(
 	default:
 		return model.PomodoroSession{}, ErrInvalidSessionType
 	}
+	validatedActivities, err := validateBreakActivities(sessionType, minutes, breakActivities)
+	if err != nil {
+		return model.PomodoroSession{}, err
+	}
 
-	session, err := s.sessions.Start(ctx, userID, taskID, sessionType, minutes*60)
+	session, err := s.sessions.Start(
+		ctx,
+		userID,
+		taskID,
+		sessionType,
+		minutes*60,
+		validatedActivities,
+	)
 	return s.mapResult(session, err)
 }
 
@@ -133,6 +148,56 @@ func (s *SessionService) Complete(ctx context.Context, userID, sessionID int64) 
 func (s *SessionService) Cancel(ctx context.Context, userID, sessionID int64) (model.PomodoroSession, error) {
 	session, err := s.sessions.Cancel(ctx, userID, sessionID)
 	return s.mapResult(session, err)
+}
+
+func (s *SessionService) SaveReadiness(
+	ctx context.Context,
+	userID int64,
+	sessionID int64,
+	score int,
+) (model.PomodoroSession, error) {
+	if score < 1 || score > 10 {
+		return model.PomodoroSession{}, ErrInvalidReadinessScore
+	}
+	session, err := s.sessions.SaveReadiness(ctx, userID, sessionID, score)
+	return s.mapResult(session, err)
+}
+
+var breakActivityMinimumMinutes = map[string]int{
+	"water":   1,
+	"eyes":    1,
+	"music":   2,
+	"stretch": 4,
+	"walk":    10,
+	"meal":    20,
+}
+
+func validateBreakActivities(
+	sessionType string,
+	durationMinutes int,
+	activities []string,
+) ([]string, error) {
+	if sessionType == "work" {
+		if len(activities) > 0 {
+			return nil, ErrInvalidBreakActivity
+		}
+		return []string{}, nil
+	}
+
+	validated := make([]string, 0, len(activities))
+	seen := make(map[string]struct{}, len(activities))
+	for _, activity := range activities {
+		minimumMinutes, exists := breakActivityMinimumMinutes[activity]
+		if !exists || durationMinutes < minimumMinutes {
+			return nil, ErrInvalidBreakActivity
+		}
+		if _, duplicate := seen[activity]; duplicate {
+			continue
+		}
+		seen[activity] = struct{}{}
+		validated = append(validated, activity)
+	}
+	return validated, nil
 }
 
 func (s *SessionService) mapResult(
