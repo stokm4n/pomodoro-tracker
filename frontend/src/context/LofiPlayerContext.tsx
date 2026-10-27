@@ -51,7 +51,10 @@ declare global {
 }
 
 interface LofiPlayerContextValue {
+  hide: () => void;
+  isHidden: boolean;
   isOpen: boolean;
+  show: () => void;
   toggle: () => void;
 }
 
@@ -88,6 +91,7 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
   const [position, setPosition] = useState<PlayerPosition | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
   const player = useRef<HTMLElement | null>(null);
   const frame = useRef<HTMLIFrameElement | null>(null);
   const widget = useRef<SoundCloudWidget | null>(null);
@@ -258,6 +262,7 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
     if (isOpen) {
       widget.current?.getPosition((positionMs) => persistPlayback({ positionMs }));
       persistPlayback({ isOpen: false, wasPlaying: false });
+      setIsHidden(false);
       setIsOpen(false);
       return;
     }
@@ -265,16 +270,25 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
     const playback = { ...readPlayback(), isOpen: true };
     persistPlayback(playback);
     setEmbedUrl(buildEmbedUrl(playback));
+    setIsHidden(false);
     setIsOpen(true);
   }
 
   return (
-    <LofiPlayerContext.Provider value={{ isOpen, toggle: togglePlayer }}>
+    <LofiPlayerContext.Provider
+      value={{
+        hide: () => setIsHidden(true),
+        isHidden,
+        isOpen,
+        show: () => setIsHidden(false),
+        toggle: togglePlayer,
+      }}
+    >
       {children}
       {isOpen && (
         <aside
           ref={player}
-          className={`lofi-player ${isDragging ? "is-dragging" : ""}`}
+          className={`lofi-player ${isDragging ? "is-dragging" : ""} ${isHidden ? "is-hidden" : ""}`}
           style={playerStyle}
           aria-label="Lo-fi плеер"
         >

@@ -2730,6 +2730,10 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   box-shadow: 0 24px 70px rgba(43, 35, 29, 0.2);
 }
 
+.lofi-player.is-hidden {
+  display: none;
+}
+
 .lofi-player-heading {
   display: flex;
   align-items: center;
