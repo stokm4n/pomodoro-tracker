@@ -15,8 +15,10 @@ interface SoundCloudWidget {
   getCurrentSoundIndex: (callback: (trackIndex: number) => void) => void;
   getPosition: (callback: (position: number) => void) => void;
   getSounds: (callback: (sounds: SoundCloudSound[]) => void) => void;
+  next: () => void;
   pause: () => void;
   play: () => void;
+  prev: () => void;
   seekTo: (milliseconds: number) => void;
   setVolume: (volume: number) => void;
   skip: (trackIndex: number) => void;
@@ -85,6 +87,7 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
   });
   const [position, setPosition] = useState<PlayerPosition | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const player = useRef<HTMLElement | null>(null);
   const frame = useRef<HTMLIFrameElement | null>(null);
   const widget = useRef<SoundCloudWidget | null>(null);
@@ -113,6 +116,7 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isOpen) {
       widget.current = null;
+      setIsPlayerReady(false);
       return;
     }
 
@@ -129,6 +133,7 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
 
         const playback = readPlayback();
         connectedWidget.setVolume(volumeRef.current);
+        setIsPlayerReady(true);
         connectedWidget.getSounds((sounds) => {
           if (cancelled) return;
 
@@ -202,8 +207,18 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       script?.removeEventListener("load", connectWidget);
       widget.current = null;
+      setIsPlayerReady(false);
     };
   }, [isOpen]);
+
+  function changeTrack(direction: "previous" | "next") {
+    const connectedWidget = widget.current;
+    if (!connectedWidget || !isPlayerReady) return;
+
+    persistPlayback({ positionMs: 0, wasPlaying: true });
+    if (direction === "previous") connectedWidget.prev();
+    else connectedWidget.next();
+  }
 
   function startDragging(event: ReactPointerEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button") || !player.current) return;
@@ -289,6 +304,22 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
             allow="autoplay"
             loading="lazy"
           />
+          <div className="lofi-track-controls" aria-label="Переключение треков">
+            <button
+              type="button"
+              onClick={() => changeTrack("previous")}
+              disabled={!isPlayerReady}
+            >
+              ← Предыдущий
+            </button>
+            <button
+              type="button"
+              onClick={() => changeTrack("next")}
+              disabled={!isPlayerReady}
+            >
+              Следующий →
+            </button>
+          </div>
           <label className="lofi-volume">
             <span>Громкость</span>
             <input

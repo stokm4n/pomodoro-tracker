@@ -2786,6 +2786,34 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   background: #fff;
 }
 
+.lofi-track-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lofi-track-controls button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lofi-track-controls button:hover:not(:disabled) {
+  border-color: var(--tomato);
+  color: var(--tomato);
+}
+
+.lofi-track-controls button:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+
 .lofi-volume {
   display: grid;
   grid-template-columns: auto minmax(100px, 1fr) 36px;
