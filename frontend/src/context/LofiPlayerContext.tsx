@@ -12,6 +12,7 @@ import {
 interface SoundCloudWidget {
   bind: (eventName: string, listener: (data?: SoundCloudPlayProgress) => void) => void;
   getCurrentSound: (callback: (sound: SoundCloudSound) => void) => void;
+  getCurrentSoundIndex: (callback: (trackIndex: number) => void) => void;
   getPosition: (callback: (position: number) => void) => void;
   getSounds: (callback: (sounds: SoundCloudSound[]) => void) => void;
   pause: () => void;
@@ -178,6 +179,7 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
           positionMs: progress.currentPosition,
           wasPlaying: true,
         });
+        saveCurrentTrack(connectedWidget);
       });
       connectedWidget.bind(window.SC.Widget.Events.FINISH, () => {
         if (!cancelled) persistPlayback({ positionMs: 0 });
@@ -376,28 +378,20 @@ function persistPlayback(changes: Partial<PersistedPlayback>) {
 }
 
 function saveCurrentTrack(widget: SoundCloudWidget) {
+  widget.getCurrentSoundIndex((trackIndex) => {
+    if (Number.isInteger(trackIndex) && trackIndex >= 0) {
+      persistPlayback({ trackIndex });
+    }
+  });
+
   widget.getCurrentSound((currentSound) => {
-    widget.getSounds((sounds) => {
-      const currentId = soundIdentifier(currentSound);
-      const trackIndex = sounds.findIndex((sound) => sameSound(sound, currentSound));
-      persistPlayback({
-        trackId: currentId,
-        trackIndex: trackIndex >= 0 ? trackIndex : readPlayback().trackIndex,
-      });
-    });
+    persistPlayback({ trackId: soundIdentifier(currentSound) });
   });
 }
 
 function soundIdentifier(sound: SoundCloudSound) {
   if (sound.id !== undefined) return String(sound.id);
   return sound.permalink_url ?? "";
-}
-
-function sameSound(first: SoundCloudSound, second: SoundCloudSound) {
-  if (first.id !== undefined && second.id !== undefined) {
-    return String(first.id) === String(second.id);
-  }
-  return Boolean(first.permalink_url && first.permalink_url === second.permalink_url);
 }
 
 function findSavedTrackIndex(sounds: SoundCloudSound[], playback: PersistedPlayback) {
