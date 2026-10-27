@@ -10,13 +10,35 @@ import {
 } from "react";
 
 interface SoundCloudWidget {
-  bind: (eventName: string, listener: () => void) => void;
+  bind: (eventName: string, listener: (data?: SoundCloudPlayProgress) => void) => void;
+  getCurrentSound: (callback: (sound: SoundCloudSound) => void) => void;
+  getPosition: (callback: (position: number) => void) => void;
+  getSounds: (callback: (sounds: SoundCloudSound[]) => void) => void;
+  pause: () => void;
+  play: () => void;
+  seekTo: (milliseconds: number) => void;
   setVolume: (volume: number) => void;
+  skip: (trackIndex: number) => void;
 }
 
 interface SoundCloudWidgetFactory {
   (iframe: HTMLIFrameElement): SoundCloudWidget;
-  Events: { READY: string };
+  Events: {
+    FINISH: string;
+    PAUSE: string;
+    PLAY: string;
+    PLAY_PROGRESS: string;
+    READY: string;
+  };
+}
+
+interface SoundCloudSound {
+  id?: number | string;
+  permalink_url?: string;
+}
+
+interface SoundCloudPlayProgress {
+  currentPosition?: number;
 }
 
 declare global {
@@ -36,14 +58,24 @@ interface PlayerPosition {
 }
 
 const soundCloudPlaylistUrl = "https://soundcloud.com/sc-playlists/sets/lo-fi-chill-beats";
-const soundCloudEmbedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(soundCloudPlaylistUrl)}&color=%23d94f3d&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false`;
 const soundCloudWidgetScript = "https://w.soundcloud.com/player/api.js";
 const lofiVolumeStorageKey = "pomodoro-lofi-volume";
+const lofiPlaybackStorageKey = "pomodoro-lofi-playback";
+
+interface PersistedPlayback {
+  isOpen: boolean;
+  positionMs: number;
+  trackId: string | null;
+  trackIndex: number;
+  wasPlaying: boolean;
+}
 
 const LofiPlayerContext = createContext<LofiPlayerContextValue | null>(null);
 
 export function LofiPlayerProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const initialPlayback = useRef(readPlayback()).current;
+  const [isOpen, setIsOpen] = useState(initialPlayback.isOpen);
+  const [embedUrl, setEmbedUrl] = useState(() => buildEmbedUrl(initialPlayback));
   const [volume, setVolume] = useState(() => {
     const savedVolume = Number(window.localStorage.getItem(lofiVolumeStorageKey));
     return Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 100
@@ -57,6 +89,7 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
   const widget = useRef<SoundCloudWidget | null>(null);
   const volumeRef = useRef(volume);
   const dragOffset = useRef<PlayerPosition | null>(null);
+  const lastPositionSave = useRef(0);
 
   useEffect(() => {
     const keepPlayerOnScreen = () => {
@@ -88,9 +121,66 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
     const connectWidget = () => {
       if (cancelled || !window.SC || !frame.current) return;
       const connectedWidget = window.SC.Widget(frame.current);
+      let pendingRestore: PersistedPlayback | null = null;
       widget.current = connectedWidget;
       connectedWidget.bind(window.SC.Widget.Events.READY, () => {
-        if (!cancelled) connectedWidget.setVolume(volumeRef.current);
+        if (cancelled) return;
+
+        const playback = readPlayback();
+        connectedWidget.setVolume(volumeRef.current);
+        connectedWidget.getSounds((sounds) => {
+          if (cancelled) return;
+
+          const savedTrackIndex = findSavedTrackIndex(sounds, playback);
+          if (savedTrackIndex > 0) {
+            pendingRestore = { ...playback, trackIndex: savedTrackIndex };
+            connectedWidget.skip(savedTrackIndex);
+            return;
+          }
+
+          if (playback.positionMs > 0) connectedWidget.seekTo(playback.positionMs);
+          if (playback.wasPlaying) connectedWidget.play();
+        });
+      });
+      connectedWidget.bind(window.SC.Widget.Events.PLAY, () => {
+        if (cancelled) return;
+
+        if (pendingRestore) {
+          const playback = pendingRestore;
+          pendingRestore = null;
+          if (playback.positionMs > 0) connectedWidget.seekTo(playback.positionMs);
+          if (!playback.wasPlaying) connectedWidget.pause();
+          persistPlayback({
+            isOpen: true,
+            trackIndex: playback.trackIndex,
+            wasPlaying: playback.wasPlaying,
+          });
+          saveCurrentTrack(connectedWidget);
+          return;
+        }
+
+        persistPlayback({ isOpen: true, wasPlaying: true });
+        saveCurrentTrack(connectedWidget);
+      });
+      connectedWidget.bind(window.SC.Widget.Events.PAUSE, () => {
+        if (cancelled) return;
+        connectedWidget.getPosition((positionMs) => {
+          persistPlayback({ positionMs, wasPlaying: false });
+        });
+      });
+      connectedWidget.bind(window.SC.Widget.Events.PLAY_PROGRESS, (progress) => {
+        if (cancelled || typeof progress?.currentPosition !== "number") return;
+        const now = Date.now();
+        if (now - lastPositionSave.current < 1500) return;
+        lastPositionSave.current = now;
+        persistPlayback({
+          isOpen: true,
+          positionMs: progress.currentPosition,
+          wasPlaying: true,
+        });
+      });
+      connectedWidget.bind(window.SC.Widget.Events.FINISH, () => {
+        if (!cancelled) persistPlayback({ positionMs: 0 });
       });
     };
 
@@ -147,8 +237,22 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
     ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
     : undefined;
 
+  function togglePlayer() {
+    if (isOpen) {
+      widget.current?.getPosition((positionMs) => persistPlayback({ positionMs }));
+      persistPlayback({ isOpen: false, wasPlaying: false });
+      setIsOpen(false);
+      return;
+    }
+
+    const playback = { ...readPlayback(), isOpen: true };
+    persistPlayback(playback);
+    setEmbedUrl(buildEmbedUrl(playback));
+    setIsOpen(true);
+  }
+
   return (
-    <LofiPlayerContext.Provider value={{ isOpen, toggle: () => setIsOpen((open) => !open) }}>
+    <LofiPlayerContext.Provider value={{ isOpen, toggle: togglePlayer }}>
       {children}
       {isOpen && (
         <aside
@@ -172,14 +276,14 @@ export function LofiPlayerProvider({ children }: { children: ReactNode }) {
                 <span>Разные треки из плейлиста SoundCloud</span>
               </div>
             </div>
-            <button className="text-button" type="button" onClick={() => setIsOpen(false)}>
+            <button className="text-button" type="button" onClick={togglePlayer}>
               Закрыть
             </button>
           </div>
           <iframe
             ref={frame}
             title="Lo-fi плейлист SoundCloud"
-            src={soundCloudEmbedUrl}
+            src={embedUrl}
             allow="autoplay"
             loading="lazy"
           />
@@ -216,4 +320,93 @@ function clampPosition(x: number, y: number, player: HTMLElement): PlayerPositio
     x: Math.min(Math.max(edge, x), maxX),
     y: Math.min(Math.max(edge, y), maxY),
   };
+}
+
+function buildEmbedUrl(playback: PersistedPlayback) {
+  const params = new URLSearchParams({
+    url: soundCloudPlaylistUrl,
+    color: "#d94f3d",
+    // Восстанавливаем воспроизведение через Widget API после выбора сохранённого трека.
+    // Иначе SoundCloud успевает запустить первый трек плейлиста.
+    auto_play: "false",
+    hide_related: "true",
+    show_comments: "false",
+    show_user: "true",
+    show_reposts: "false",
+    show_teaser: "false",
+    start_track: String(playback.trackIndex),
+    visual: "false",
+  });
+  return `https://w.soundcloud.com/player/?${params.toString()}`;
+}
+
+function readPlayback(): PersistedPlayback {
+  const fallback: PersistedPlayback = {
+    isOpen: false,
+    positionMs: 0,
+    trackId: null,
+    trackIndex: 0,
+    wasPlaying: false,
+  };
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(lofiPlaybackStorageKey) ?? "null");
+    if (!saved || typeof saved !== "object") return fallback;
+    return {
+      isOpen: saved.isOpen === true,
+      positionMs: Number.isFinite(saved.positionMs) && saved.positionMs >= 0
+        ? saved.positionMs
+        : 0,
+      trackId: typeof saved.trackId === "string" ? saved.trackId : null,
+      trackIndex: Number.isInteger(saved.trackIndex) && saved.trackIndex >= 0
+        ? saved.trackIndex
+        : 0,
+      wasPlaying: saved.wasPlaying === true,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function persistPlayback(changes: Partial<PersistedPlayback>) {
+  window.localStorage.setItem(
+    lofiPlaybackStorageKey,
+    JSON.stringify({ ...readPlayback(), ...changes }),
+  );
+}
+
+function saveCurrentTrack(widget: SoundCloudWidget) {
+  widget.getCurrentSound((currentSound) => {
+    widget.getSounds((sounds) => {
+      const currentId = soundIdentifier(currentSound);
+      const trackIndex = sounds.findIndex((sound) => sameSound(sound, currentSound));
+      persistPlayback({
+        trackId: currentId,
+        trackIndex: trackIndex >= 0 ? trackIndex : readPlayback().trackIndex,
+      });
+    });
+  });
+}
+
+function soundIdentifier(sound: SoundCloudSound) {
+  if (sound.id !== undefined) return String(sound.id);
+  return sound.permalink_url ?? "";
+}
+
+function sameSound(first: SoundCloudSound, second: SoundCloudSound) {
+  if (first.id !== undefined && second.id !== undefined) {
+    return String(first.id) === String(second.id);
+  }
+  return Boolean(first.permalink_url && first.permalink_url === second.permalink_url);
+}
+
+function findSavedTrackIndex(sounds: SoundCloudSound[], playback: PersistedPlayback) {
+  if (playback.trackId) {
+    const matchedIndex = sounds.findIndex(
+      (sound) => soundIdentifier(sound) === playback.trackId,
+    );
+    if (matchedIndex >= 0) return matchedIndex;
+  }
+
+  return playback.trackIndex < sounds.length ? playback.trackIndex : 0;
 }
