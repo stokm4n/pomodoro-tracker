@@ -34,14 +34,17 @@ func (r *StatisticsRepository) Get(
 		ctx,
 		`SELECT
 			COUNT(*) FILTER (
-				WHERE session_type = 'work' AND status = 'completed'
+				WHERE session_type = 'work'
+				  AND status = 'completed'
+				  AND elapsed_seconds >= planned_duration_seconds
 			),
 			COALESCE(SUM(elapsed_seconds) FILTER (
 				WHERE session_type = 'work' AND status = 'completed'
 			), 0),
 			COUNT(*) FILTER (WHERE status = 'cancelled')
 		 FROM (
-			SELECT session_type, status, elapsed_seconds, started_at AS event_time
+			SELECT session_type, status, planned_duration_seconds,
+			       elapsed_seconds, started_at AS event_time
 			FROM pomodoro_sessions
 			WHERE user_id = $1
 		 ) AS filtered_sessions
@@ -79,10 +82,13 @@ func (r *StatisticsRepository) Get(
 		           (event_time AT TIME ZONE 'Europe/Moscow')::DATE,
 		           'YYYY-MM-DD'
 		       ),
-		       COUNT(*),
+		       COUNT(*) FILTER (
+		           WHERE elapsed_seconds >= planned_duration_seconds
+		       ),
 		       COALESCE(SUM(elapsed_seconds), 0)
 		 FROM (
-			SELECT started_at AS event_time, elapsed_seconds
+			SELECT started_at AS event_time, elapsed_seconds,
+			       planned_duration_seconds
 			FROM pomodoro_sessions
 			WHERE user_id = $1
 			  AND session_type = 'work'
@@ -108,11 +114,15 @@ func (r *StatisticsRepository) Get(
 
 	taskRows, err := r.db.Query(
 		ctx,
-		`SELECT task_id, title, COUNT(*),
+		`SELECT task_id, title,
+		        COUNT(*) FILTER (
+		            WHERE elapsed_seconds >= planned_duration_seconds
+		        ),
 		        COALESCE(SUM(elapsed_seconds), 0), deleted
 		 FROM (
 			SELECT sessions.started_at AS event_time,
 			       sessions.elapsed_seconds,
+			       sessions.planned_duration_seconds,
 			       tasks.id AS task_id,
 			       tasks.title,
 			       tasks.deleted_at IS NOT NULL AS deleted
@@ -124,7 +134,11 @@ func (r *StatisticsRepository) Get(
 		 ) AS filtered_task_sessions
 		 WHERE `+statisticsPeriodCondition+`
 		 GROUP BY task_id, title, deleted
-		 ORDER BY COUNT(*) DESC, SUM(elapsed_seconds) DESC, title
+		 ORDER BY SUM(elapsed_seconds) DESC,
+		          COUNT(*) FILTER (
+		              WHERE elapsed_seconds >= planned_duration_seconds
+		          ) DESC,
+		          title
 		 LIMIT 5`,
 		userID,
 		days,
@@ -219,7 +233,9 @@ func (r *StatisticsRepository) GetLeaderboard(
 		ctx,
 		`WITH lifetime_sessions AS (
 			SELECT user_id,
-			       COUNT(*) AS total_completed_pomodoros,
+			       COUNT(*) FILTER (
+			           WHERE elapsed_seconds >= planned_duration_seconds
+			       ) AS total_completed_pomodoros,
 			       COALESCE(SUM(elapsed_seconds), 0) AS total_focus_seconds
 			FROM pomodoro_sessions
 			WHERE session_type = 'work' AND status = 'completed'
@@ -255,7 +271,9 @@ func (r *StatisticsRepository) GetLeaderboard(
 			       u.avatar_data,
 			       u.bio,
 			       u.created_at,
-			       COUNT(s.id) AS completed_pomodoros,
+			       COUNT(s.id) FILTER (
+			           WHERE s.elapsed_seconds >= s.planned_duration_seconds
+			       ) AS completed_pomodoros,
 			       COALESCE(SUM(s.elapsed_seconds), 0) AS focus_seconds
 			FROM users AS u
 			LEFT JOIN pomodoro_sessions AS s
@@ -271,7 +289,7 @@ func (r *StatisticsRepository) GetLeaderboard(
 			GROUP BY u.id, u.username, u.avatar_data, u.bio, u.created_at
 		), ranked AS (
 			SELECT ROW_NUMBER() OVER (
-			           ORDER BY completed_pomodoros DESC, focus_seconds DESC, username
+			           ORDER BY focus_seconds DESC, completed_pomodoros DESC, username
 			       ) AS rank,
 			       user_id,
 			       username,

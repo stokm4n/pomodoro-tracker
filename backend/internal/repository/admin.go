@@ -31,7 +31,8 @@ func (r *AdminRepository) ListUsers(ctx context.Context) ([]model.AdminUserSumma
 		       (SELECT COUNT(*) FROM pomodoro_sessions s
 		        WHERE s.user_id = u.id
 		          AND s.session_type = 'work'
-		          AND s.status = 'completed'),
+		          AND s.status = 'completed'
+		          AND s.elapsed_seconds >= s.planned_duration_seconds),
 		       (SELECT COALESCE(SUM(s.elapsed_seconds), 0)
 		        FROM pomodoro_sessions s
 		        WHERE s.user_id = u.id
@@ -64,7 +65,8 @@ func (r *AdminRepository) GetUser(ctx context.Context, userID int64) (model.Admi
 		       (SELECT COUNT(*) FROM pomodoro_sessions s
 		        WHERE s.user_id = u.id
 		          AND s.session_type = 'work'
-		          AND s.status = 'completed'),
+		          AND s.status = 'completed'
+		          AND s.elapsed_seconds >= s.planned_duration_seconds),
 		       (SELECT COALESCE(SUM(s.elapsed_seconds), 0)
 		        FROM pomodoro_sessions s
 		        WHERE s.user_id = u.id
@@ -121,7 +123,9 @@ func (r *AdminRepository) GetSystemStatistics(
 		       (SELECT COUNT(*) FROM tasks
 		        WHERE deleted_at IS NULL AND status = 'completed'),
 		       (SELECT COUNT(*) FROM pomodoro_sessions
-		        WHERE session_type = 'work' AND status = 'completed'),
+		        WHERE session_type = 'work'
+		          AND status = 'completed'
+		          AND elapsed_seconds >= planned_duration_seconds),
 		       (SELECT COALESCE(SUM(elapsed_seconds), 0)
 		        FROM pomodoro_sessions
 		        WHERE session_type = 'work' AND status = 'completed')`).Scan(

@@ -183,7 +183,8 @@ func (r *SessionRepository) CountCompletedWork(
 		 FROM pomodoro_sessions
 		 WHERE user_id = $1
 		   AND session_type = 'work'
-		   AND status = 'completed'`,
+		   AND status = 'completed'
+		   AND elapsed_seconds >= planned_duration_seconds`,
 		userID,
 	).Scan(&count)
 	if err != nil {

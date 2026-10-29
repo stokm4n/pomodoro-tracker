@@ -100,8 +100,8 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
     [statistics, sessions, period],
   );
   const maximumFocus = Math.max(...chartPoints.map((point) => point.focus_seconds), 1);
-  const maximumTaskPomodoros = Math.max(
-    ...(statistics?.top_tasks.map((task) => task.completed_pomodoros) ?? []),
+  const maximumTaskFocus = Math.max(
+    ...(statistics?.top_tasks.map((task) => task.focus_seconds) ?? []),
     1,
   );
 
@@ -184,7 +184,7 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
                 </div>
 
                 {chartPoints.length === 0 ? (
-                  <StatisticsEmpty text="За этот период пока нет завершённых Pomodoro." />
+                  <StatisticsEmpty text="За этот период пока нет времени фокуса." />
                 ) : (
                   <div className="focus-chart" aria-label="График минут фокуса">
                     {chartPoints.map((point) => {
@@ -215,7 +215,7 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
                 </div>
 
                 {statistics.top_tasks.length === 0 ? (
-                  <StatisticsEmpty text="Завершите Pomodoro с выбранной задачей." />
+                  <StatisticsEmpty text="Завершите фокус-сессию с выбранной задачей." />
                 ) : (
                   <ol className="top-tasks-list">
                     {statistics.top_tasks.map((task, index) => (
@@ -225,7 +225,7 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
                           <div className="top-task-copy">
                             <strong>{task.title}</strong>
                             <div className="top-task-actions">
-                              <span>{task.completed_pomodoros} Pomodoro · {formatFocusTime(task.focus_seconds)}</span>
+                              <span>{formatFocusTime(task.focus_seconds)} · {task.completed_pomodoros} Pomodoro</span>
                               <button
                                 className="top-task-delete"
                                 type="button"
@@ -239,7 +239,7 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
                           <div className="top-task-track" aria-hidden="true">
                             <span
                               style={{
-                                width: `${(task.completed_pomodoros / maximumTaskPomodoros) * 100}%`,
+                                width: `${(task.focus_seconds / maximumTaskFocus) * 100}%`,
                               }}
                             />
                           </div>

@@ -139,7 +139,8 @@ func (s *SessionService) Complete(ctx context.Context, userID, sessionID int64) 
 	}
 	completion.CompletedWorkCount = completedWork
 	completion.NextSessionType = "short_break"
-	if completedWork > 0 && completedWork%4 == 0 {
+	completedFullInterval := session.ElapsedSeconds >= session.PlannedDurationSeconds
+	if completedFullInterval && completedWork > 0 && completedWork%4 == 0 {
 		completion.NextSessionType = "long_break"
 	}
 	return completion, nil

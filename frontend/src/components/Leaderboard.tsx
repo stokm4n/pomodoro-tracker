@@ -46,7 +46,7 @@ export function Leaderboard() {
         <div>
           <span className="eyebrow">Сообщество</span>
           <h2 id="leaderboard-title">Leaderboard</h2>
-          <p>Рейтинг по количеству завершённых Pomodoro.</p>
+          <p>Рейтинг по фактическому времени фокуса.</p>
         </div>
         <div className="statistics-periods" aria-label="Период рейтинга">
           {(Object.keys(periodLabels) as LeaderboardPeriod[]).map((item) => (
@@ -108,12 +108,12 @@ export function Leaderboard() {
                   </span>
                 </div>
                 <div className="leaderboard-result">
-                  <strong>{entry.completed_pomodoros}</strong>
-                  <span>Pomodoro</span>
-                </div>
-                <div className="leaderboard-result">
                   <strong>{formatFocusTime(entry.focus_seconds)}</strong>
                   <span>Фокус</span>
+                </div>
+                <div className="leaderboard-result">
+                  <strong>{entry.completed_pomodoros}</strong>
+                  <span>Pomodoro</span>
                 </div>
                 <button
                   className="leaderboard-profile-button"

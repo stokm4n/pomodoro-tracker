@@ -241,15 +241,22 @@ export function TimerPanel({
     }
   }
 
-  function notifyAboutCompletion(nextType: SessionType) {
+  function notifyAboutCompletion(completion: sessionsApi.SessionCompletionResponse) {
     if (!settings?.notifications_enabled) return;
 
     playCompletionSound();
     if (!("Notification" in window) || Notification.permission !== "granted") return;
 
+    const nextType = completion.next_session_type;
+    const completedWorkEarly = completion.session.session_type === "work"
+      && completion.session.elapsed_seconds < completion.session.planned_duration_seconds;
     const isBreak = nextType !== "work";
-    const title = isBreak ? "Pomodoro завершён" : "Перерыв завершён";
-    const body = nextType === "long_break"
+    const title = completedWorkEarly
+      ? "Фокус-сессия завершена"
+      : isBreak ? "Pomodoro завершён" : "Перерыв завершён";
+    const body = completedWorkEarly
+      ? "Время фокуса учтено, но Pomodoro не засчитан."
+      : nextType === "long_break"
       ? "Четыре Pomodoro готовы — время длинного перерыва."
       : nextType === "short_break"
         ? "Время короткого перерыва."
@@ -268,7 +275,7 @@ export function TimerPanel({
 
   function handleCompletedSession(completion: sessionsApi.SessionCompletionResponse) {
     prepareNextInterval(completion.next_session_type);
-    notifyAboutCompletion(completion.next_session_type);
+    notifyAboutCompletion(completion);
 
     if (completion.session.session_type === "work" && completion.next_session_type !== "work") {
       const durationMinutes = completion.next_session_type === "long_break"

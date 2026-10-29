@@ -182,8 +182,11 @@ func TestSessionCurrentMapsNotFound(t *testing.T) {
 
 func TestSessionCompleteSelectsShortBreak(t *testing.T) {
 	repositoryStub := &sessionRepositoryStub{
-		completeResult: model.PomodoroSession{SessionType: "work", Status: "completed"},
-		completedWork:  3,
+		completeResult: model.PomodoroSession{
+			SessionType: "work", Status: "completed",
+			PlannedDurationSeconds: 1500, ElapsedSeconds: 1500,
+		},
+		completedWork: 3,
 	}
 	sessions := NewSessionService(repositoryStub, &sessionSettingsStub{})
 
@@ -198,8 +201,11 @@ func TestSessionCompleteSelectsShortBreak(t *testing.T) {
 
 func TestSessionCompleteSelectsLongBreakAfterFourthWork(t *testing.T) {
 	repositoryStub := &sessionRepositoryStub{
-		completeResult: model.PomodoroSession{SessionType: "work", Status: "completed"},
-		completedWork:  4,
+		completeResult: model.PomodoroSession{
+			SessionType: "work", Status: "completed",
+			PlannedDurationSeconds: 1500, ElapsedSeconds: 1500,
+		},
+		completedWork: 4,
 	}
 	sessions := NewSessionService(repositoryStub, &sessionSettingsStub{})
 
@@ -209,6 +215,25 @@ func TestSessionCompleteSelectsLongBreakAfterFourthWork(t *testing.T) {
 	}
 	if result.NextSessionType != "long_break" {
 		t.Fatalf("expected long_break, got %s", result.NextSessionType)
+	}
+}
+
+func TestSessionCompleteEarlyDoesNotSelectLongBreak(t *testing.T) {
+	repositoryStub := &sessionRepositoryStub{
+		completeResult: model.PomodoroSession{
+			SessionType: "work", Status: "completed",
+			PlannedDurationSeconds: 1500, ElapsedSeconds: 60,
+		},
+		completedWork: 4,
+	}
+	sessions := NewSessionService(repositoryStub, &sessionSettingsStub{})
+
+	result, err := sessions.Complete(context.Background(), 1, 10)
+	if err != nil {
+		t.Fatalf("Complete() returned an error: %v", err)
+	}
+	if result.NextSessionType != "short_break" {
+		t.Fatalf("expected short_break, got %s", result.NextSessionType)
 	}
 }
 
