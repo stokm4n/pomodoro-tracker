@@ -297,27 +297,86 @@ export function TimerPanel({
       : [...selected, activity]);
   }
 
-  function finishBreakPlanning(skip = false) {
-    if (!breakPlan) return;
-    setPendingBreakPlan({
+  async function finishBreakPlanning(skip = false) {
+    if (!token || !breakPlan) return;
+    const plan = {
       sessionType: breakPlan.sessionType,
       activities: skip ? [] : selectedBreakActivities,
-    });
+    };
+    setPendingBreakPlan(plan);
     setBreakPlan(null);
-  }
-
-  async function submitReadiness(score: number) {
-    if (!token || readinessSessionID === null) return;
-    setReadinessSaving(true);
+    setSessionType(plan.sessionType);
+    setBusy(true);
     setError("");
     try {
-      await sessionsApi.saveReadiness(token, readinessSessionID, score);
+      const created = await createSession(plan.sessionType, plan.activities);
+      applyStartedSession(created);
+      setPendingBreakPlan(null);
+    } catch (requestError) {
+      handleError(requestError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function continueAfterBreak(score: number | null) {
+    if (!token || readinessSessionID === null) return;
+    setReadinessSaving(true);
+    setBusy(true);
+    setError("");
+    try {
+      if (score !== null) {
+        await sessionsApi.saveReadiness(token, readinessSessionID, score);
+      }
       setReadinessSessionID(null);
+      setSessionType("work");
+      const created = await createSession("work", []);
+      applyStartedSession(created);
     } catch (requestError) {
       handleError(requestError);
     } finally {
       setReadinessSaving(false);
+      setBusy(false);
     }
+  }
+
+  async function createSession(type: SessionType, breakActivities: BreakActivity[]) {
+    if (!token) throw new Error("missing authentication token");
+
+    prepareCompletionSound();
+    if (
+      settings?.notifications_enabled &&
+      "Notification" in window &&
+      Notification.permission === "default"
+    ) {
+      await Notification.requestPermission();
+    }
+
+    const input = {
+      session_type: type,
+      task_id: type === "work" ? selectedTaskId : null,
+      break_activities: type === "work" ? [] : breakActivities,
+    };
+    try {
+      return await sessionsApi.startSession(token, input);
+    } catch (requestError) {
+      if (
+        type === "work"
+        && input.task_id !== null
+        && requestError instanceof ApiError
+        && requestError.message === "active task not found"
+      ) {
+        onSelectTask(null);
+        return sessionsApi.startSession(token, { ...input, task_id: null });
+      }
+      throw requestError;
+    }
+  }
+
+  function applyStartedSession(created: PomodoroSession) {
+    setSessionType(created.session_type);
+    setSession(created);
+    setRemainingSeconds(created.remaining_seconds);
   }
 
   async function start() {
@@ -325,23 +384,11 @@ export function TimerPanel({
     setBusy(true);
     setError("");
     try {
-      prepareCompletionSound();
-      if (
-        settings?.notifications_enabled &&
-        "Notification" in window &&
-        Notification.permission === "default"
-      ) {
-        await Notification.requestPermission();
-      }
-      const created = await sessionsApi.startSession(token, {
-        session_type: sessionType,
-        task_id: sessionType === "work" ? selectedTaskId : null,
-        break_activities: sessionType !== "work" && pendingBreakPlan?.sessionType === sessionType
-          ? pendingBreakPlan.activities
-          : [],
-      });
-      setSession(created);
-      setRemainingSeconds(created.remaining_seconds);
+      const activities = sessionType !== "work" && pendingBreakPlan?.sessionType === sessionType
+        ? pendingBreakPlan.activities
+        : [];
+      const created = await createSession(sessionType, activities);
+      applyStartedSession(created);
       if (sessionType !== "work") setPendingBreakPlan(null);
     } catch (requestError) {
       handleError(requestError);
@@ -599,11 +646,21 @@ export function TimerPanel({
                 })}
             </div>
             <div className="break-dialog-actions">
-              <button className="button button-primary" type="button" onClick={() => finishBreakPlanning()}>
-                Готово
+              <button
+                className="button button-primary"
+                type="button"
+                disabled={busy}
+                onClick={() => finishBreakPlanning()}
+              >
+                {busy ? "Запускаем…" : "Начать перерыв"}
               </button>
-              <button className="text-button" type="button" onClick={() => finishBreakPlanning(true)}>
-                Пропустить
+              <button
+                className="text-button"
+                type="button"
+                disabled={busy}
+                onClick={() => finishBreakPlanning(true)}
+              >
+                Пропустить и начать перерыв
               </button>
             </div>
           </section>
@@ -623,7 +680,7 @@ export function TimerPanel({
                   type="button"
                   disabled={readinessSaving}
                   aria-label={`Готовность ${score} из 10`}
-                  onClick={() => submitReadiness(score)}
+                  onClick={() => continueAfterBreak(score)}
                 >
                   {score}
                 </button>
@@ -633,9 +690,9 @@ export function TimerPanel({
               className="text-button"
               type="button"
               disabled={readinessSaving}
-              onClick={() => setReadinessSessionID(null)}
+              onClick={() => continueAfterBreak(null)}
             >
-              Пропустить
+              Пропустить и начать работу
             </button>
           </section>
         </div>
