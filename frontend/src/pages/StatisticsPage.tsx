@@ -100,6 +100,7 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
     [statistics, sessions, period],
   );
   const maximumFocus = Math.max(...chartPoints.map((point) => point.focus_seconds), 1);
+  const hasChartData = chartPoints.some((point) => point.focus_seconds > 0);
   const maximumTaskFocus = Math.max(
     ...(statistics?.top_tasks.map((task) => task.focus_seconds) ?? []),
     1,
@@ -149,8 +150,8 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
 
             <div className="statistics-overview-heading">
               <div>
-                <span className="eyebrow">Основные показатели</span>
-                <h2 id="statistics-title">Обзор</h2>
+                <span className="eyebrow">Результаты</span>
+                <h2 id="statistics-title">Обзор периода</h2>
               </div>
               <div className="statistics-periods" aria-label="Период статистики">
                 {(Object.keys(periodLabels) as StatisticsPeriod[]).map((item) => (
@@ -167,34 +168,49 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
             </div>
 
             <section className="statistics-summary" aria-label="Основные показатели">
-              <StatisticCard label="Завершено Pomodoro" value={String(statistics.completed_pomodoros)} />
-              <StatisticCard label="Время фокуса" value={formatFocusTime(statistics.focus_seconds)} />
-              <StatisticCard label="Выполнено задач" value={String(statistics.completed_tasks)} />
-              <StatisticCard label="Отменено сессий" value={String(statistics.cancelled_sessions)} />
+              <StatisticCard
+                label="Время фокуса"
+                value={formatFocusTime(statistics.focus_seconds)}
+                hint="чистое время работы"
+                primary
+              />
+              <StatisticCard
+                label="Pomodoro"
+                value={String(statistics.completed_pomodoros)}
+                hint="завершённых сессий"
+              />
+              <StatisticCard
+                label="Задачи"
+                value={String(statistics.completed_tasks)}
+                hint="выполнено"
+              />
+              <StatisticCard
+                label="Отменено"
+                value={String(statistics.cancelled_sessions)}
+                hint="незавершённых сессий"
+              />
             </section>
 
-            <div className="statistics-grid">
-              <section className="statistics-card chart-card" aria-labelledby="chart-title">
+            <section className="statistics-card statistics-chart-card" aria-labelledby="chart-title">
                 <div className="statistics-card-heading">
                   <div>
                     <span className="eyebrow">Динамика</span>
-                    <h2 id="chart-title">Минуты фокуса</h2>
+                    <h2 id="chart-title">Время фокуса</h2>
                   </div>
                   <span>{periodLabels[period]} · {chartScaleLabels[period]}</span>
                 </div>
 
-                {chartPoints.length === 0 ? (
+                {!hasChartData ? (
                   <StatisticsEmpty text="За этот период пока нет времени фокуса." />
                 ) : (
                   <div className="focus-chart" aria-label="График минут фокуса">
                     {chartPoints.map((point) => {
-                      const minutes = Math.floor(point.focus_seconds / 60);
                       const height = point.focus_seconds === 0
                         ? 0
                         : Math.max(6, (point.focus_seconds / maximumFocus) * 100);
                       return (
                         <div className="chart-column" key={point.key}>
-                          <span className="chart-value">{minutes}</span>
+                          <span className="chart-value">{formatChartValue(point.focus_seconds)}</span>
                           <div className="chart-track">
                             <span style={{ height: `${height}%` }} />
                           </div>
@@ -204,8 +220,9 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
                     })}
                   </div>
                 )}
-              </section>
+            </section>
 
+            <div className="statistics-details-grid">
               <section className="statistics-card top-tasks-card" aria-labelledby="top-tasks-title">
                 <div className="statistics-card-heading">
                   <div>
@@ -249,9 +266,9 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
                   </ol>
                 )}
               </section>
-            </div>
 
-            <BreakEffectiveness activities={statistics.break_activities} />
+              <BreakEffectiveness activities={statistics.break_activities} />
+            </div>
           </>
         ) : null}
     </section>
@@ -387,11 +404,22 @@ function ActivityCalendar({
   );
 }
 
-function StatisticCard({ label, value }: { label: string; value: string }) {
+function StatisticCard({
+  label,
+  value,
+  hint,
+  primary = false,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  primary?: boolean;
+}) {
   return (
-    <div>
-      <span>{label}</span>
+    <div className={primary ? "is-primary" : ""}>
+      <span className="statistics-summary-label">{label}</span>
       <strong>{value}</strong>
+      <small>{hint}</small>
     </div>
   );
 }
@@ -405,6 +433,15 @@ function formatFocusTime(totalSeconds: number) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return hours > 0 ? `${hours} ч ${minutes} мин` : `${minutes} мин`;
+}
+
+function formatChartValue(totalSeconds: number) {
+  if (totalSeconds === 0) return "—";
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  if (totalMinutes < 60) return `${totalMinutes} мин`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours} ч ${minutes}` : `${hours} ч`;
 }
 
 function buildChartSeries(
