@@ -823,19 +823,20 @@ select:focus-visible {
   font-size: 13px;
 }
 
-.statistics-overview-heading {
+.statistics-period-row {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
-.statistics-overview-heading h2 {
-  margin: 0;
-  font-family: "Unbounded", sans-serif;
-  font-size: clamp(25px, 3vw, 36px);
-  letter-spacing: -0.05em;
+.statistics-period-row > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .statistics-periods {
@@ -3629,11 +3630,6 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   }
 
   .history-card-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .statistics-overview-heading {
     align-items: flex-start;
     flex-direction: column;
   }

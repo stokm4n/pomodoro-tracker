@@ -34,12 +34,6 @@ const chartScaleLabels: Record<StatisticsPeriod, string> = {
 
 export type StatisticsSection = "overview" | "activity" | "breaks";
 
-const sectionHeadings: Record<StatisticsSection, { eyebrow: string; title: string }> = {
-  overview: { eyebrow: "Результаты", title: "Обзор периода" },
-  activity: { eyebrow: "Рабочие сессии", title: "Активность" },
-  breaks: { eyebrow: "Восстановление", title: "Перерывы" },
-};
-
 interface ChartPoint {
   key: string;
   label: string;
@@ -153,18 +147,15 @@ export function StatisticsOverview({
   }
 
   return (
-    <section className="statistics-overview" aria-labelledby="statistics-title">
+    <section className="statistics-overview" aria-label="Статистика пользователя">
       {error && <p className="page-error" role="alert">{error}</p>}
 
       {loading && !statistics ? (
         <div className="statistics-loading">Загружаем статистику…</div>
       ) : statistics ? (
         <>
-          <div className="statistics-overview-heading">
-            <div>
-              <span className="eyebrow">{sectionHeadings[section].eyebrow}</span>
-              <h2 id="statistics-title">{sectionHeadings[section].title}</h2>
-            </div>
+          <div className="statistics-period-row">
+            <span>Период</span>
             <div className="statistics-periods" aria-label="Период статистики">
               {(Object.keys(periodLabels) as StatisticsPeriod[]).map((item) => (
                 <button
