@@ -155,7 +155,6 @@ export function StatisticsOverview({
       ) : statistics ? (
         <>
           <div className="statistics-period-row">
-            <span>Период</span>
             <div className="statistics-periods" aria-label="Период статистики">
               {(Object.keys(periodLabels) as StatisticsPeriod[]).map((item) => (
                 <button

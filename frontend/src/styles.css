@@ -825,44 +825,39 @@ select:focus-visible {
 
 .statistics-period-row {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.statistics-period-row > span {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  justify-content: flex-start;
+  margin-bottom: 24px;
 }
 
 .statistics-periods {
   display: flex;
-  gap: 5px;
-  padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  background: #ebe6dd;
+  width: 100%;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
 }
 
 .statistics-periods button {
+  min-width: 76px;
+  margin-bottom: -1px;
   border: 0;
-  border-radius: 9px;
-  padding: 10px 15px;
+  border-bottom: 2px solid transparent;
+  padding: 4px 2px 11px;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.statistics-periods button:hover {
+  color: var(--ink);
 }
 
 .statistics-periods button.active {
-  color: var(--ink);
-  background: white;
-  box-shadow: 0 4px 14px rgba(56, 44, 35, 0.08);
+  border-bottom-color: var(--tomato);
+  color: var(--tomato-dark);
 }
 
 .statistics-summary {
@@ -3456,7 +3451,6 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 :root[data-theme="dark"] .auth-tabs,
 :root[data-theme="dark"] .main-nav,
 :root[data-theme="dark"] .statistics-page-tabs,
-:root[data-theme="dark"] .statistics-periods,
 :root[data-theme="dark"] .timer-types,
 :root[data-theme="dark"] .profile-section-tabs {
   background: #302d29;
@@ -3465,7 +3459,6 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 :root[data-theme="dark"] .auth-tabs button.active,
 :root[data-theme="dark"] .main-nav button.active,
 :root[data-theme="dark"] .statistics-page-tabs button.active,
-:root[data-theme="dark"] .statistics-periods button.active,
 :root[data-theme="dark"] .timer-types button.active,
 :root[data-theme="dark"] .profile-section-tabs button.active {
   background: #403b36;
@@ -3720,13 +3713,10 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
     flex-direction: column;
   }
 
-  .statistics-periods {
-    width: 100%;
-  }
-
   .statistics-periods button {
+    min-width: 0;
     flex: 1;
-    padding-inline: 8px;
+    text-align: center;
   }
 
   .statistics-summary {
