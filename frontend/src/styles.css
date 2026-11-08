@@ -535,6 +535,40 @@ select:focus-visible {
   margin-bottom: 30px;
 }
 
+.statistics-page-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 28px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 6px;
+  background: #ebe6dd;
+}
+
+.statistics-page-tabs button {
+  min-width: 112px;
+  flex: 1;
+  border: 0;
+  border-radius: 11px;
+  padding: 12px 16px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.statistics-page-tabs button:hover {
+  color: var(--ink);
+}
+
+.statistics-page-tabs button.active {
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 5px 18px rgba(56, 44, 35, 0.09);
+}
+
 .leaderboard-card {
   margin-bottom: 30px;
   border: 1px solid var(--line);
@@ -870,14 +904,16 @@ select:focus-visible {
 }
 
 .statistics-chart-card {
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
-.statistics-details-grid {
+.statistics-section-stack {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
-  align-items: start;
+}
+
+.statistics-section-stack .activity-card {
+  margin-bottom: 0;
 }
 
 .statistics-card {
@@ -3418,6 +3454,7 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 
 :root[data-theme="dark"] .auth-tabs,
 :root[data-theme="dark"] .main-nav,
+:root[data-theme="dark"] .statistics-page-tabs,
 :root[data-theme="dark"] .statistics-periods,
 :root[data-theme="dark"] .timer-types,
 :root[data-theme="dark"] .profile-section-tabs {
@@ -3426,6 +3463,7 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 
 :root[data-theme="dark"] .auth-tabs button.active,
 :root[data-theme="dark"] .main-nav button.active,
+:root[data-theme="dark"] .statistics-page-tabs button.active,
 :root[data-theme="dark"] .statistics-periods button.active,
 :root[data-theme="dark"] .timer-types button.active,
 :root[data-theme="dark"] .profile-section-tabs button.active {
@@ -3607,10 +3645,6 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
 
   .statistics-summary {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .statistics-details-grid {
-    grid-template-columns: 1fr;
   }
 
   .profile-grid {

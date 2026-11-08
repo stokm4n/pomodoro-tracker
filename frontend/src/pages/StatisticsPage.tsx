@@ -32,6 +32,14 @@ const chartScaleLabels: Record<StatisticsPeriod, string> = {
   all: "по месяцам",
 };
 
+export type StatisticsSection = "overview" | "activity" | "breaks";
+
+const sectionHeadings: Record<StatisticsSection, { eyebrow: string; title: string }> = {
+  overview: { eyebrow: "Результаты", title: "Обзор периода" },
+  activity: { eyebrow: "Рабочие сессии", title: "Активность" },
+  breaks: { eyebrow: "Восстановление", title: "Перерывы" },
+};
+
 interface ChartPoint {
   key: string;
   label: string;
@@ -50,7 +58,13 @@ interface ActivityMonth {
   column: number;
 }
 
-export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[] }) {
+export function StatisticsOverview({
+  sessions,
+  section,
+}: {
+  sessions: SessionHistoryItem[];
+  section: StatisticsSection;
+}) {
   const { token, logout } = useAuth();
   const [period, setPeriod] = useState<StatisticsPeriod>("week");
   const [statistics, setStatistics] = useState<Statistics | null>(null);
@@ -140,33 +154,33 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
 
   return (
     <section className="statistics-overview" aria-labelledby="statistics-title">
-        {error && <p className="page-error" role="alert">{error}</p>}
+      {error && <p className="page-error" role="alert">{error}</p>}
 
-        {loading && !statistics ? (
-          <div className="statistics-loading">Загружаем статистику…</div>
-        ) : statistics ? (
-          <>
-            <ActivityCalendar daily={activityDaily} loading={activityLoading} />
-
-            <div className="statistics-overview-heading">
-              <div>
-                <span className="eyebrow">Результаты</span>
-                <h2 id="statistics-title">Обзор периода</h2>
-              </div>
-              <div className="statistics-periods" aria-label="Период статистики">
-                {(Object.keys(periodLabels) as StatisticsPeriod[]).map((item) => (
-                  <button
-                    key={item}
-                    className={period === item ? "active" : ""}
-                    type="button"
-                    onClick={() => setPeriod(item)}
-                  >
-                    {periodLabels[item]}
-                  </button>
-                ))}
-              </div>
+      {loading && !statistics ? (
+        <div className="statistics-loading">Загружаем статистику…</div>
+      ) : statistics ? (
+        <>
+          <div className="statistics-overview-heading">
+            <div>
+              <span className="eyebrow">{sectionHeadings[section].eyebrow}</span>
+              <h2 id="statistics-title">{sectionHeadings[section].title}</h2>
             </div>
+            <div className="statistics-periods" aria-label="Период статистики">
+              {(Object.keys(periodLabels) as StatisticsPeriod[]).map((item) => (
+                <button
+                  key={item}
+                  className={period === item ? "active" : ""}
+                  type="button"
+                  onClick={() => setPeriod(item)}
+                >
+                  {periodLabels[item]}
+                </button>
+              ))}
+            </div>
+          </div>
 
+          {section === "overview" ? (
+            <>
             <section className="statistics-summary" aria-label="Основные показатели">
               <StatisticCard
                 label="Время фокуса"
@@ -192,85 +206,89 @@ export function StatisticsOverview({ sessions }: { sessions: SessionHistoryItem[
             </section>
 
             <section className="statistics-card statistics-chart-card" aria-labelledby="chart-title">
-                <div className="statistics-card-heading">
-                  <div>
-                    <span className="eyebrow">Динамика</span>
-                    <h2 id="chart-title">Время фокуса</h2>
-                  </div>
-                  <span>{periodLabels[period]} · {chartScaleLabels[period]}</span>
+              <div className="statistics-card-heading">
+                <div>
+                  <span className="eyebrow">Динамика</span>
+                  <h2 id="chart-title">Время фокуса</h2>
                 </div>
+                <span>{periodLabels[period]} · {chartScaleLabels[period]}</span>
+              </div>
 
-                {!hasChartData ? (
-                  <StatisticsEmpty text="За этот период пока нет времени фокуса." />
-                ) : (
-                  <div className="focus-chart" aria-label="График минут фокуса">
-                    {chartPoints.map((point) => {
-                      const height = point.focus_seconds === 0
-                        ? 0
-                        : Math.max(6, (point.focus_seconds / maximumFocus) * 100);
-                      return (
-                        <div className="chart-column" key={point.key}>
-                          <span className="chart-value">{formatChartValue(point.focus_seconds)}</span>
-                          <div className="chart-track">
-                            <span style={{ height: `${height}%` }} />
-                          </div>
-                          <time dateTime={point.key}>{point.label}</time>
+              {!hasChartData ? (
+                <StatisticsEmpty text="За этот период пока нет времени фокуса." />
+              ) : (
+                <div className="focus-chart" aria-label="График минут фокуса">
+                  {chartPoints.map((point) => {
+                    const height = point.focus_seconds === 0
+                      ? 0
+                      : Math.max(6, (point.focus_seconds / maximumFocus) * 100);
+                    return (
+                      <div className="chart-column" key={point.key}>
+                        <span className="chart-value">{formatChartValue(point.focus_seconds)}</span>
+                        <div className="chart-track">
+                          <span style={{ height: `${height}%` }} />
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        <time dateTime={point.key}>{point.label}</time>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
+            </>
+          ) : section === "activity" ? (
+            <div className="statistics-section-stack">
+              <ActivityCalendar daily={activityDaily} loading={activityLoading} />
 
-            <div className="statistics-details-grid">
               <section className="statistics-card top-tasks-card" aria-labelledby="top-tasks-title">
-                <div className="statistics-card-heading">
-                  <div>
-                    <span className="eyebrow">Задачи</span>
-                    <h2 id="top-tasks-title">Больше всего фокуса</h2>
-                  </div>
+              <div className="statistics-card-heading">
+                <div>
+                  <span className="eyebrow">Задачи</span>
+                  <h2 id="top-tasks-title">Больше всего фокуса</h2>
                 </div>
+              </div>
 
-                {statistics.top_tasks.length === 0 ? (
-                  <StatisticsEmpty text="Завершите фокус-сессию с выбранной задачей." />
-                ) : (
-                  <ol className="top-tasks-list">
-                    {statistics.top_tasks.map((task, index) => (
-                      <li key={task.task_id}>
-                        <span className="top-task-number">{String(index + 1).padStart(2, "0")}</span>
-                        <div>
-                          <div className="top-task-copy">
-                            <strong>{task.title}</strong>
-                            <div className="top-task-actions">
-                              <span>{formatFocusTime(task.focus_seconds)} · {task.completed_pomodoros} Pomodoro</span>
-                              <button
-                                className="top-task-delete"
-                                type="button"
-                                disabled={deletingTaskID === task.task_id}
-                                onClick={() => permanentlyDeleteTask(task.task_id, task.title)}
-                              >
-                                {deletingTaskID === task.task_id ? "Удаляем…" : "Удалить"}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="top-task-track" aria-hidden="true">
-                            <span
-                              style={{
-                                width: `${(task.focus_seconds / maximumTaskFocus) * 100}%`,
-                              }}
-                            />
+              {statistics.top_tasks.length === 0 ? (
+                <StatisticsEmpty text="Завершите фокус-сессию с выбранной задачей." />
+              ) : (
+                <ol className="top-tasks-list">
+                  {statistics.top_tasks.map((task, index) => (
+                    <li key={task.task_id}>
+                      <span className="top-task-number">{String(index + 1).padStart(2, "0")}</span>
+                      <div>
+                        <div className="top-task-copy">
+                          <strong>{task.title}</strong>
+                          <div className="top-task-actions">
+                            <span>{formatFocusTime(task.focus_seconds)} · {task.completed_pomodoros} Pomodoro</span>
+                            <button
+                              className="top-task-delete"
+                              type="button"
+                              disabled={deletingTaskID === task.task_id}
+                              onClick={() => permanentlyDeleteTask(task.task_id, task.title)}
+                            >
+                              {deletingTaskID === task.task_id ? "Удаляем…" : "Удалить"}
+                            </button>
                           </div>
                         </div>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </section>
-
-              <BreakEffectiveness activities={statistics.break_activities} />
+                        <div className="top-task-track" aria-hidden="true">
+                          <span
+                            style={{
+                              width: `${(task.focus_seconds / maximumTaskFocus) * 100}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
             </div>
-          </>
-        ) : null}
+          ) : (
+            <BreakEffectiveness activities={statistics.break_activities} />
+          )}
+        </>
+      ) : null}
     </section>
   );
 }

@@ -4,7 +4,7 @@ import { getSessionHistory } from "../api/sessions";
 import { AppHeader } from "../components/AppHeader";
 import { Leaderboard } from "../components/Leaderboard";
 import { useAuth } from "../context/AuthContext";
-import { StatisticsOverview } from "./StatisticsPage";
+import { StatisticsOverview, type StatisticsSection } from "./StatisticsPage";
 import type { AppView, SessionHistoryItem, SessionType } from "../types";
 
 interface HistoryPageProps {
@@ -12,6 +12,15 @@ interface HistoryPageProps {
 }
 
 type TypeFilter = "all" | SessionType;
+type StatisticsPageSection = StatisticsSection | "leaderboard" | "history";
+
+const statisticsSections: Array<{ id: StatisticsPageSection; label: string }> = [
+  { id: "overview", label: "Обзор" },
+  { id: "activity", label: "Активность" },
+  { id: "breaks", label: "Перерывы" },
+  { id: "leaderboard", label: "Рейтинг" },
+  { id: "history", label: "История" },
+];
 
 const sessionLabels: Record<SessionType, string> = {
   work: "Работа",
@@ -26,6 +35,7 @@ export function HistoryPage({ onNavigate }: HistoryPageProps) {
   const [dateFilter, setDateFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeSection, setActiveSection] = useState<StatisticsPageSection>("overview");
 
   useEffect(() => {
     if (!token) return;
@@ -68,12 +78,28 @@ export function HistoryPage({ onNavigate }: HistoryPageProps) {
           </div>
         </section>
 
-        <StatisticsOverview sessions={sessions} />
-
-        <Leaderboard />
+        <nav className="statistics-page-tabs" aria-label="Разделы статистики">
+          {statisticsSections.map((section) => (
+            <button
+              key={section.id}
+              className={activeSection === section.id ? "active" : ""}
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+            >
+              {section.label}
+            </button>
+          ))}
+        </nav>
 
         {error && <p className="page-error" role="alert">{error}</p>}
 
+        {activeSection === "overview"
+          || activeSection === "activity"
+          || activeSection === "breaks" ? (
+          <StatisticsOverview sessions={sessions} section={activeSection} />
+        ) : activeSection === "leaderboard" ? (
+          <Leaderboard />
+        ) : (
         <section className="history-card" aria-labelledby="history-title">
           <div className="history-card-heading">
             <div>
@@ -137,6 +163,7 @@ export function HistoryPage({ onNavigate }: HistoryPageProps) {
             </ul>
           )}
         </section>
+        )}
       </main>
     </div>
   );
