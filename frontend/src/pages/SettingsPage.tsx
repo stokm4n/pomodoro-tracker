@@ -41,7 +41,6 @@ const soundLabels: Record<NotificationSound, string> = {
   soft: "Мягкий",
   bell: "Колокольчик",
   digital: "Цифровой",
-  people_go: "Ну че народ погнали",
 };
 
 export function SettingsPage({ onNavigate }: SettingsPageProps) {

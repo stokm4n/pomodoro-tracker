@@ -1,11 +1,6 @@
 import type { NotificationSound } from "../types";
 
 let sharedAudioContext: AudioContext | null = null;
-const peopleGoSoundUrl = new URL(
-  "../assets/well-let-the-people-go.mp3",
-  import.meta.url,
-).href;
-const peopleGoBuffers = new WeakMap<AudioContext, Promise<AudioBuffer>>();
 
 interface SoundNote {
   frequency: number;
@@ -15,7 +10,7 @@ interface SoundNote {
   type: OscillatorType;
 }
 
-const soundPatterns: Record<Exclude<NotificationSound, "people_go">, SoundNote[]> = {
+const soundPatterns: Record<NotificationSound, SoundNote[]> = {
   classic: [
     { frequency: 660, start: 0, duration: 0.55, level: 0.46, type: "sine" },
     { frequency: 880, start: 0.58, duration: 0.58, level: 0.46, type: "sine" },
@@ -63,18 +58,6 @@ export function playNotificationSound(
   return context.resume().then(() => {
     const boostedVolume = Math.min(1.25, volumeFactor * 1.6);
 
-    if (sound === "people_go") {
-      return getPeopleGoBuffer(context).then((buffer) => {
-        const source = context.createBufferSource();
-        const gain = context.createGain();
-        source.buffer = buffer;
-        gain.gain.value = Math.min(1, boostedVolume);
-        source.connect(gain);
-        gain.connect(context.destination);
-        source.start();
-      });
-    }
-
     const startAt = context.currentTime + 0.02;
     soundPatterns[sound].forEach((note) => {
       const oscillator = context.createOscillator();
@@ -96,18 +79,4 @@ export function playNotificationSound(
       oscillator.stop(noteEnd);
     });
   });
-}
-
-function getPeopleGoBuffer(context: AudioContext) {
-  const cached = peopleGoBuffers.get(context);
-  if (cached) return cached;
-
-  const loading = fetch(peopleGoSoundUrl)
-    .then((response) => {
-      if (!response.ok) throw new Error("notification sound could not be loaded");
-      return response.arrayBuffer();
-    })
-    .then((audioData) => context.decodeAudioData(audioData));
-  peopleGoBuffers.set(context, loading);
-  return loading;
 }

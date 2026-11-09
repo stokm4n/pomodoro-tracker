@@ -12,7 +12,7 @@ var (
 	ErrInvalidWorkDuration       = errors.New("work duration must be between 1 and 180 minutes")
 	ErrInvalidShortBreak         = errors.New("short break must be between 1 and 60 minutes")
 	ErrInvalidLongBreak          = errors.New("long break must be between 1 and 120 minutes")
-	ErrInvalidNotificationSound  = errors.New("notification sound must be 'classic', 'soft', 'bell', 'digital' or 'people_go'")
+	ErrInvalidNotificationSound  = errors.New("notification sound must be 'classic', 'soft', 'bell' or 'digital'")
 	ErrInvalidNotificationVolume = errors.New("notification volume must be between 0 and 100")
 	ErrSettingsNotFound          = errors.New("settings not found")
 )
@@ -67,7 +67,7 @@ func (s *SettingsService) Update(
 
 func validNotificationSound(sound string) bool {
 	switch sound {
-	case "classic", "soft", "bell", "digital", "people_go":
+	case "classic", "soft", "bell", "digital":
 		return true
 	default:
 		return false

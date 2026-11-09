@@ -144,7 +144,7 @@ select:focus-visible {
 .auth-layout {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: minmax(380px, 0.9fr) minmax(500px, 1.1fr);
+  grid-template-columns: minmax(480px, 1.08fr) minmax(500px, 0.92fr);
 }
 
 .auth-intro {
@@ -184,7 +184,7 @@ select:focus-visible {
 .auth-intro-copy {
   position: relative;
   z-index: 1;
-  max-width: 640px;
+  max-width: 680px;
   margin: auto 0;
 }
 
@@ -197,10 +197,14 @@ select:focus-visible {
 }
 
 .auth-intro h1 {
-  max-width: 630px;
+  max-width: 680px;
   margin: 0;
-  font-size: clamp(40px, 5.2vw, 76px);
-  line-height: 1.02;
+  font-size: clamp(38px, 4.8vw, 72px);
+  line-height: 1.04;
+  hyphens: none;
+  overflow-wrap: normal;
+  text-wrap: balance;
+  word-break: normal;
 }
 
 .auth-intro-copy p {
@@ -3580,6 +3584,25 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   color: #908981;
 }
 
+@media (max-width: 1100px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-intro {
+    min-height: 440px;
+  }
+
+  .auth-intro-copy {
+    margin: 70px 0;
+  }
+
+  .auth-panel {
+    min-height: auto;
+    padding-block: 70px;
+  }
+}
+
 @media (max-width: 980px) {
   .auth-layout {
     grid-template-columns: 1fr;
@@ -3673,7 +3696,7 @@ time.activity-day:not(.is-future):hover .activity-tooltip {
   }
 
   .auth-intro h1 {
-    font-size: 38px;
+    font-size: clamp(29px, 6vw, 38px);
   }
 
   .auth-tabs {

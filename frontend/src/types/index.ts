@@ -51,8 +51,7 @@ export type NotificationSound =
   | "classic"
   | "soft"
   | "bell"
-  | "digital"
-  | "people_go";
+  | "digital";
 
 export interface Settings {
   user_id: number;
