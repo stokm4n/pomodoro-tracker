@@ -2,19 +2,13 @@ import { useEffect, useState } from "react";
 import { ApiError } from "../api/client";
 import { getLeaderboard } from "../api/statistics";
 import { useAuth } from "../context/AuthContext";
-import type { Leaderboard as LeaderboardData, LeaderboardPeriod } from "../types";
+import type { Leaderboard as LeaderboardData } from "../types";
 import { buildAchievements, isAchievementUnlocked } from "../utils/achievements";
 import { getUserLevelProgress } from "../utils/userLevels";
 import { UserLevelAvatar } from "./UserLevelAvatar";
 
-const periodLabels: Record<LeaderboardPeriod, string> = {
-  week: "7 дней",
-  all: "Всё время",
-};
-
 export function Leaderboard() {
   const { token, user, logout } = useAuth();
-  const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,7 +18,7 @@ export function Leaderboard() {
     if (!token) return;
     setLoading(true);
     setError("");
-    getLeaderboard(token, period)
+    getLeaderboard(token, "all")
       .then(setLeaderboard)
       .catch((requestError: unknown) => {
         if (requestError instanceof ApiError && requestError.status === 401) {
@@ -38,7 +32,7 @@ export function Leaderboard() {
         );
       })
       .finally(() => setLoading(false));
-  }, [token, period]);
+  }, [token]);
 
   return (
     <section className="leaderboard-card" aria-labelledby="leaderboard-title">
@@ -47,18 +41,6 @@ export function Leaderboard() {
           <span className="eyebrow">Сообщество</span>
           <h2 id="leaderboard-title">Leaderboard</h2>
           <p>Рейтинг по фактическому времени фокуса.</p>
-        </div>
-        <div className="statistics-periods" aria-label="Период рейтинга">
-          {(Object.keys(periodLabels) as LeaderboardPeriod[]).map((item) => (
-            <button
-              key={item}
-              className={period === item ? "active" : ""}
-              type="button"
-              onClick={() => setPeriod(item)}
-            >
-              {periodLabels[item]}
-            </button>
-          ))}
         </div>
       </div>
 
